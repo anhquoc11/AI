@@ -57,3 +57,27 @@ def trace_path(end):
     path_states.reverse()
     actions.reverse()
     return path_states, actions
+
+def is_terminal(state):
+    # Trò chơi kết thúc nếu không còn ô '5' (House) trên bản đồ
+    return count_box_cells(state) == 0
+
+def get_actions_caro(state):
+    return [(i, j) for i in range(3) for j in range(3) if state[i][j] == 0]
+
+def check_winner_caro(state):
+    for i in range(3):
+        if state[i][0] == state[i][1] == state[i][2] and state[i][0] != 0: return state[i][0]
+        if state[0][i] == state[1][i] == state[2][i] and state[0][i] != 0: return state[0][i]
+    if state[0][0] == state[1][1] == state[2][2] and state[0][0] != 0: return state[0][0]
+    if state[0][2] == state[1][1] == state[2][0] and state[0][2] != 0: return state[0][2]
+    return 0
+
+def is_terminal_caro(state):
+    return check_winner_caro(state) != 0 or not get_actions_caro(state)
+
+def evaluate_caro(state):
+    winner = check_winner_caro(state)
+    if winner == 2: return 10
+    if winner == 1: return -10
+    return 0
