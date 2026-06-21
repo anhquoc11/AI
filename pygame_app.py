@@ -164,12 +164,15 @@ def minimax_drop(node, depth, is_maximizing):
 # ==================== MAIN GAME ====================
 
 def load_assets(cell_size):
-    def load(name):
+    def load(name, custom_size=None):
         try:
             img = pygame.image.load(ASSET_PATH + name)
+            if custom_size:
+                return pygame.transform.scale(img, custom_size)
             return pygame.transform.scale(img, (cell_size, cell_size))
         except Exception:
             return None
+            
     return {
         'building': load('Building.jpg'),
         'drone': load('Drone.jpg'),
@@ -177,6 +180,9 @@ def load_assets(cell_size):
         'nofly': load('Nofly.jpg'),
         'tree': load('Tree.png'),
         'warehouse': load('Warehouse.jpg'),
+        # Thêm 2 dòng này để load ảnh cho game thả hàng (kích thước 60x60 pixel)
+        'c4_player': load('box.png', (60, 60)), 
+        'c4_ai': load('lock.png', (60, 60))
     }
 
 def random_map(size, obstacle_prob=0.12, seed=None):
@@ -266,7 +272,6 @@ def main():
     pygame.display.set_caption("Drone Delivery & AI Minigames")
     clock = pygame.time.Clock()
     
-    # === SỬA LỖI GIAO DIỆN Ở ĐÂY: TĂNG LEFT_PANEL TỪ 250 -> 380 ===
     LEFT_PANEL = max(380, int(screen_width * 0.28))
     GRID_WIDTH = screen_width - LEFT_PANEL - 3 * PADDING
     GRID_HEIGHT = screen_height - 2 * PADDING
@@ -323,7 +328,7 @@ def main():
     log_scroll_offset = 0
     max_visible_logs = 6
     prev_log_length = 0
-    log_rect = pygame.Rect(0, 0, 0, 0) # Khởi tạo tạm
+    log_rect = pygame.Rect(0, 0, 0, 0) 
     
     delivered_count = 0
     delivered_houses = []
@@ -346,13 +351,17 @@ def main():
     fuel = 60
     current_step = 0
     move_timer = 0
-    ai_timer = 0 # Thêm biến đếm thời gian cho AI
+    ai_timer = 0 
 
     while running:
         now = pygame.time.get_ticks()
+        
+        # Calculate boundaries
+        dropdown_y = PADDING + 50
+        dropdown_height = font_size + 10
+        dropdown_rect = pygame.Rect(PADDING + 10, dropdown_y, LEFT_PANEL - PADDING - 20, dropdown_height)
         diff_rect = pygame.Rect(PADDING + 10, PADDING + 130, LEFT_PANEL - PADDING - 20, font_size + 10)
         
-        # Calculate Connect 4 UI boundaries
         c4_board_width = 420
         c4_board_height = 350
         c4_start_x = screen_width // 2 - c4_board_width // 2
@@ -365,8 +374,6 @@ def main():
             elif event.type == pygame.VIDEORESIZE:
                 screen_width, screen_height = event.size
                 screen = pygame.display.set_mode((screen_width, screen_height), pygame.RESIZABLE)
-                
-                # === SỬA LỖI GIAO DIỆN Ở ĐÂY: TĂNG LEFT_PANEL KHI RESIZE ===
                 LEFT_PANEL = max(380, int(screen_width * 0.28))
                 GRID_WIDTH = screen_width - LEFT_PANEL - 3 * PADDING
                 GRID_HEIGHT = screen_height - 2 * PADDING
@@ -375,51 +382,54 @@ def main():
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    # Đổi độ khó AI
-                    if not in_minigame_caro and not in_connect4 and diff_rect.collidepoint(event.pos):
-                        current_difficulty_idx = (current_difficulty_idx + 1) % len(DIFFICULTY_LEVELS)
+                    clicked_dropdown = False
                     
-                    # Tương tác với Cờ Caro
-                    elif in_minigame_caro and caro_player_turn:
-                        mx, my = event.pos
-                        for r in range(3):
-                            for c in range(3):
-                                if caro_rects[r][c] and caro_rects[r][c].collidepoint((mx, my)) and caro_board[r][c] == 0:
-                                    caro_board[r][c] = 1
-                                    caro_player_turn = False
-                                    ai_timer = pygame.time.get_ticks() # Lưu mốc thời gian click
+                    if dropdown_open:
+                        for i, opt_rect in enumerate(options_rects):
+                            if opt_rect.collidepoint(event.pos):
+                                selected_algo_name = algo_options[dropdown_scroll_offset + i]
+                                algo = choose_algorithm(selected_algo_name)
+                                dropdown_open = False
+                                clicked_dropdown = True
+                                break
                     
-                    # Tương tác với Connect 4
-                    elif in_connect4 and c4_player_turn:
-                        mx, my = event.pos
-                        if c4_start_x <= mx <= c4_start_x + c4_board_width and c4_start_y <= my <= c4_start_y + c4_board_height:
-                            col = (mx - c4_start_x) // c4_cell_s
-                            row = get_next_open_row(connect4_board, col)
-                            if row != -1:
-                                connect4_board[row][col] = PLAYER_C4
-                                c4_player_turn = False
-                                ai_timer = pygame.time.get_ticks() # Lưu mốc thời gian click
+                    if dropdown_rect and dropdown_rect.collidepoint(event.pos) and not clicked_dropdown:
+                        dropdown_open = not dropdown_open
+                        dropdown_scroll_offset = 0
+                        clicked_dropdown = True
+                        
+                    if not clicked_dropdown:
+                        if dropdown_open: 
+                            dropdown_open = False 
+                            
+                        if not in_minigame_caro and not in_connect4 and diff_rect.collidepoint(event.pos):
+                            current_difficulty_idx = (current_difficulty_idx + 1) % len(DIFFICULTY_LEVELS)
+                        
+                        elif in_minigame_caro and caro_player_turn:
+                            mx, my = event.pos
+                            for r in range(3):
+                                for c in range(3):
+                                    if caro_rects[r][c] and caro_rects[r][c].collidepoint((mx, my)) and caro_board[r][c] == 0:
+                                        caro_board[r][c] = 1
+                                        caro_player_turn = False
+                                        ai_timer = pygame.time.get_ticks() 
+                        
+                        elif in_connect4 and c4_player_turn:
+                            mx, my = event.pos
+                            if c4_start_x <= mx <= c4_start_x + c4_board_width and c4_start_y <= my <= c4_start_y + c4_board_height:
+                                col = (mx - c4_start_x) // c4_cell_s
+                                row = get_next_open_row(connect4_board, col)
+                                if row != -1:
+                                    connect4_board[row][col] = PLAYER_C4
+                                    c4_player_turn = False
+                                    ai_timer = pygame.time.get_ticks() 
 
-                    # Tương tác với Menu
-                    else:
-                        if dropdown_rect and dropdown_rect.collidepoint(event.pos):
-                            dropdown_open = not dropdown_open
-                            dropdown_scroll_offset = 0
-                        elif dropdown_open:
-                            for i, opt_rect in enumerate(options_rects):
-                                if opt_rect.collidepoint(event.pos):
-                                    selected_algo_name = algo_options[dropdown_scroll_offset + i]
-                                    algo = choose_algorithm(selected_algo_name)
-                                    dropdown_open = False
-                                    break
-                
-                # Logic Lăn chuột (Scroll)
-                elif event.button == 4: # Scroll Up
+                elif event.button == 4: 
                     if dropdown_open:
                         dropdown_scroll_offset = max(0, dropdown_scroll_offset - 1)
                     elif log_rect.collidepoint(event.pos):
                         log_scroll_offset = max(0, log_scroll_offset - 1)
-                elif event.button == 5: # Scroll Down
+                elif event.button == 5: 
                     if dropdown_open:
                         max_scroll = max(0, len(algo_options) - max_visible_items)
                         dropdown_scroll_offset = min(max_scroll, dropdown_scroll_offset + 1)
@@ -483,13 +493,11 @@ def main():
                             delivery_state = "IDLE"
                         move_timer = pygame.time.get_ticks()
 
-        # Cập nhật cuộn log tự động nếu có thông báo mới
         if len(delivery_log) != prev_log_length:
             log_scroll_offset = max(0, len(delivery_log) - max_visible_logs)
             prev_log_length = len(delivery_log)
 
-        # ================= AI CARO (TẠI KHO) =================
-        # THÊM ĐỘ TRỄ 300ms CHO AI
+        # ================= AI CARO =================
         if in_minigame_caro and not caro_player_turn and (now - ai_timer > 300):
             opt_prob = 1.0 
             if DIFFICULTY_LEVELS[current_difficulty_idx] == "DỄ": opt_prob = 0.20 
@@ -535,8 +543,7 @@ def main():
                 current_step = 0
                 move_timer = pygame.time.get_ticks()
 
-        # ================= AI CONNECT 4 (TẠI NHÀ GIAO) =================
-        # THÊM ĐỘ TRỄ 300ms CHO AI
+        # ================= AI CONNECT 4 =================
         if in_connect4 and not c4_player_turn and (now - ai_timer > 300):
             opt_prob = 1.0 
             if DIFFICULTY_LEVELS[current_difficulty_idx] == "DỄ": opt_prob = 0.20 
@@ -569,7 +576,6 @@ def main():
             connect4_board = [[EMPTY for _ in range(C4_COLS)] for _ in range(C4_ROWS)]
             c4_player_turn = True
             
-            # Đã giao xong
             delivered_count += 1
             delivered_houses.append(current_house)
             houses = [h for h in houses if h != current_house]
@@ -618,26 +624,12 @@ def main():
         panel_y = PADDING
         pygame.draw.rect(screen, (40, 40, 40), (panel_x, panel_y, LEFT_PANEL - PADDING, GRID_SIZE * CELL_SIZE))
         screen.blit(bigfont.render('THUẬT TOÁN', True, (200, 200, 200)), (panel_x + 10, panel_y + 10))
-        dropdown_y = panel_y + 50
-        dropdown_height = font_size + 10
-        dropdown_rect = pygame.Rect(panel_x + 10, dropdown_y, LEFT_PANEL - PADDING - 20, dropdown_height)
+        
         pygame.draw.rect(screen, (60, 60, 60), dropdown_rect, 2)
         screen.blit(font.render(selected_algo_name, True, (255, 255, 100)), (panel_x + 15, dropdown_y + 5))
         arrow_x = dropdown_rect.right - 15
         arrow_y = dropdown_rect.centery
         pygame.draw.polygon(screen, (200, 200, 200), [(arrow_x, arrow_y - 3), (arrow_x + 5, arrow_y - 3), (arrow_x + 2.5, arrow_y + 3)])
-        options_rects = []
-        if dropdown_open:
-            visible_items = algo_options[dropdown_scroll_offset:dropdown_scroll_offset + max_visible_items]
-            for i, opt in enumerate(visible_items):
-                opt_y = dropdown_y + dropdown_height + i * (font_size + 5)
-                opt_rect = pygame.Rect(panel_x + 10, opt_y, LEFT_PANEL - PADDING - 20, font_size + 5)
-                opt_color = (100, 100, 150) if opt == selected_algo_name else (70, 70, 70)
-                pygame.draw.rect(screen, opt_color, opt_rect)
-                pygame.draw.rect(screen, (200, 200, 200), opt_rect, 1)
-                opt_text_color = (255, 255, 100) if opt == selected_algo_name else (200, 200, 200)
-                screen.blit(font.render(opt[:20], True, opt_text_color), (panel_x + 15, opt_y + 3))
-                options_rects.append(opt_rect)
         
         diff_title_y = panel_y + 100
         screen.blit(bigfont.render('ĐỘ KHÓ MINIGAME', True, (200, 200, 200)), (panel_x + 10, diff_title_y))
@@ -653,8 +645,9 @@ def main():
         screen.blit(font.render('[R] RANDOM', True, (200,200,200)), (panel_x + 10, ctrl_y + font_size + 5))
         screen.blit(font.render('[ESC] EXIT', True, (200,200,200)), (panel_x + 10, ctrl_y + 2*(font_size + 5)))
 
-        grid_x0 = LEFT_PANEL + PADDING
-        grid_y0 = PADDING
+        grid_x0 = LEFT_PANEL + PADDING + (GRID_WIDTH - GRID_SIZE * CELL_SIZE) // 2
+        grid_y0 = PADDING + (GRID_HEIGHT - GRID_SIZE * CELL_SIZE) // 2
+        
         for i in range(GRID_SIZE):
             for j in range(GRID_SIZE):
                 cell = grid[i][j]
@@ -716,22 +709,18 @@ def main():
         elif fuel < 40: fuel_color = (255, 255, 100)
         screen.blit(font.render(f"Nhiên liệu    : {fuel}", True, fuel_color), (panel_x + 12, stats_y + 116))
         
-        # ================= VẼ GIAO DIỆN LOG =================
         log_y = stats_y + 150
         log_rect = pygame.Rect(panel_x + 10, log_y, LEFT_PANEL - PADDING - 10, 170)
         
-        # Vẽ viền cho khu vực Log
         pygame.draw.rect(screen, (50, 50, 50), log_rect, border_radius=5)
         screen.blit(bigfont.render('LỊCH SỬ LOG', True, (200,200,200)), (panel_x + 15, log_y + 5))
         
-        # Vẽ Text thanh cuộn / Hint
         if len(delivery_log) > max_visible_logs:
             start_idx = log_scroll_offset + 1
             end_idx = min(log_scroll_offset + max_visible_logs, len(delivery_log))
             scroll_text = f"{start_idx}-{end_idx} / {len(delivery_log)}"
-            screen.blit(font.render(scroll_text, True, (150,150,150)), (panel_x + 150, log_y + 10))
+            screen.blit(font.render(scroll_text, True, (150,150,150)), (panel_x + LEFT_PANEL - 120, log_y + 10))
 
-        # Render các dòng log trong tầm nhìn (Mở rộng số ký tự lên 45 nhờ Panel đã rộng hơn)
         visible_logs = delivery_log[log_scroll_offset : log_scroll_offset + max_visible_logs]
         for i, log_line in enumerate(visible_logs):
             screen.blit(font.render(log_line[:45], True, (200, 200, 200)), (panel_x + 15, log_y + 35 + i*(font_size + 4)))
@@ -756,7 +745,7 @@ def main():
                     if caro_board[r][c] == 1: screen.blit(bigfont.render("X", True, (255, 100, 100)), (start_x + c*cell_s + cell_s//3, start_y + r*cell_s + cell_s//4))
                     elif caro_board[r][c] == 2: screen.blit(bigfont.render("O", True, (100, 100, 255)), (start_x + c*cell_s + cell_s//3, start_y + r*cell_s + cell_s//4))
 
-        # ================= VẼ GIAO DIỆN CONNECT 4 =================
+        # ================= VẼ GIAO DIỆN CONNECT 4 BẰNG ẢNH =================
         if in_connect4:
             overlay = pygame.Surface((screen_width, screen_height))
             overlay.set_alpha(220)
@@ -771,13 +760,57 @@ def main():
                     center_y = int(c4_start_y + r*c4_cell_s + c4_cell_s/2)
                     radius = int(c4_cell_s/2 - 5)
                     
-                    color = (20, 20, 20) 
-                    if connect4_board[r][c] == PLAYER_C4: color = (255, 50, 50) 
-                    elif connect4_board[r][c] == AI_C4: color = (255, 255, 50) 
-                    pygame.draw.circle(screen, color, (center_x, center_y), radius)
+                    if connect4_board[r][c] == EMPTY:
+                        # Ô trống vẽ vòng tròn xám đen
+                        pygame.draw.circle(screen, (20, 20, 20), (center_x, center_y), radius)
+                    elif connect4_board[r][c] == PLAYER_C4:
+                        # Ô của người chơi -> Vẽ ảnh player_box.png
+                        if assets.get('c4_player'):
+                            img_rect = assets['c4_player'].get_rect(center=(center_x, center_y))
+                            screen.blit(assets['c4_player'], img_rect)
+                        else:
+                            pygame.draw.circle(screen, (255, 50, 50), (center_x, center_y), radius)
+                    elif connect4_board[r][c] == AI_C4:
+                        # Ô của máy -> Vẽ ảnh ai_box.png
+                        if assets.get('c4_ai'):
+                            img_rect = assets['c4_ai'].get_rect(center=(center_x, center_y))
+                            screen.blit(assets['c4_ai'], img_rect)
+                        else:
+                            pygame.draw.circle(screen, (255, 255, 50), (center_x, center_y), radius)
             
             title_text = bigfont.render("XẾP HÀNG - CLICK VÀO CỘT ĐỂ THẢ", True, (255, 255, 255))
             screen.blit(title_text, (screen_width//2 - title_text.get_width()//2, c4_start_y - 40))
+
+        # ================= VẼ DROPDOWN MENU =================
+        options_rects = []
+        if dropdown_open:
+            visible_items = algo_options[dropdown_scroll_offset:dropdown_scroll_offset + max_visible_items]
+            list_height = len(visible_items) * (font_size + 5)
+            if len(algo_options) > max_visible_items: list_height += font_size + 5
+            
+            shadow_rect = pygame.Rect(PADDING + 13, dropdown_y + dropdown_height + 3, LEFT_PANEL - PADDING - 20, list_height)
+            pygame.draw.rect(screen, (20, 20, 20), shadow_rect)
+            
+            bg_rect = pygame.Rect(PADDING + 10, dropdown_y + dropdown_height, LEFT_PANEL - PADDING - 20, list_height)
+            pygame.draw.rect(screen, (50, 50, 50), bg_rect)
+            pygame.draw.rect(screen, (200, 200, 200), bg_rect, 1)
+
+            for i, opt in enumerate(visible_items):
+                opt_y = dropdown_y + dropdown_height + i * (font_size + 5)
+                opt_rect = pygame.Rect(PADDING + 10, opt_y, LEFT_PANEL - PADDING - 20, font_size + 5)
+                opt_color = (100, 100, 150) if opt == selected_algo_name else (70, 70, 70)
+                pygame.draw.rect(screen, opt_color, opt_rect)
+                pygame.draw.rect(screen, (200, 200, 200), opt_rect, 1)
+                opt_text_color = (255, 255, 100) if opt == selected_algo_name else (200, 200, 200)
+                screen.blit(font.render(opt[:20], True, opt_text_color), (PADDING + 15, opt_y + 3))
+                options_rects.append(opt_rect)
+            
+            if len(algo_options) > max_visible_items:
+                scroll_text = f"UP/DOWN {dropdown_scroll_offset+1}/{len(algo_options)}"
+                scroll_bg_rect = pygame.Rect(PADDING + 10, dropdown_y + dropdown_height + max_visible_items * (font_size + 5), LEFT_PANEL - PADDING - 20, font_size + 5)
+                pygame.draw.rect(screen, (50, 50, 50), scroll_bg_rect)
+                pygame.draw.rect(screen, (200, 200, 200), scroll_bg_rect, 1)
+                screen.blit(font.render(scroll_text, True, (150, 150, 100)), (PADDING + 15, scroll_bg_rect.y + 3))
 
         pygame.display.flip()
         clock.tick(FPS)
