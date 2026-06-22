@@ -12,6 +12,9 @@ from algorithms.A_sao import A_sao
 from algorithms.Simple_Hill_Climbing import Simple_Hill_Climbing
 from algorithms.Local_Beam_Search import Local_Beam_Search
 
+from algorithms.backtracking import backtracking_route
+from algorithms.forward_checking import forward_checking_route
+
 GRID_SIZE = 20
 PADDING = 15
 FPS = 60
@@ -26,6 +29,63 @@ ALG_MAP = {
 }
 
 ASSET_PATH = "Assets/"
+
+# ==================== LOGIC CSP (TỐI ƯU TẢI TRỌNG - KÈM HISTORY) ====================
+def knapsack_backtracking(items, max_weight):
+    best_val = 0
+    best_subset = []
+    history = [] 
+    
+    def backtrack(index, curr_w, curr_v, curr_sub):
+        nonlocal best_val, best_subset
+        
+        history.append((curr_sub.copy(), curr_w, curr_v, "THINKING"))
+        
+        if curr_w > max_weight:
+            history.append((curr_sub.copy(), curr_w, curr_v, "PRUNED_OVERWEIGHT"))
+            return
+            
+        if index == len(items):
+            if curr_v > best_val:
+                best_val = curr_v
+                best_subset = curr_sub.copy()
+                history.append((curr_sub.copy(), curr_w, curr_v, "RECORD"))
+            return
+        
+        backtrack(index + 1, curr_w, curr_v, curr_sub)
+        
+        curr_sub.append(items[index])
+        backtrack(index + 1, curr_w + items[index]['w'], curr_v + items[index]['v'], curr_sub)
+        curr_sub.pop() 
+        
+    backtrack(0, 0, 0, [])
+    return best_subset, history
+
+def knapsack_forward_checking(items, max_weight):
+    best_val = 0
+    best_subset = []
+    history = []
+    
+    def fc_search(curr_w, curr_v, curr_sub, remaining_items):
+        nonlocal best_val, best_subset
+        
+        history.append((curr_sub.copy(), curr_w, curr_v, "THINKING"))
+        
+        if curr_v > best_val:
+            best_val = curr_v
+            best_subset = curr_sub.copy()
+            history.append((curr_sub.copy(), curr_w, curr_v, "RECORD"))
+            
+        valid_next_items = [item for item in remaining_items if curr_w + item['w'] <= max_weight]
+        
+        for i, item in enumerate(valid_next_items):
+            curr_sub.append(item)
+            next_remaining = valid_next_items[i + 1:] 
+            fc_search(curr_w + item['w'], curr_v + item['v'], curr_sub, next_remaining)
+            curr_sub.pop()
+            
+    fc_search(0, 0, [], items)
+    return best_subset, history
 
 # ==================== LOGIC CARO (TẠI KHO) ====================
 class CaroNode:
@@ -83,8 +143,7 @@ def alpha_beta_caro(node, depth, alpha, beta, is_maximizing):
             if beta <= alpha: break
         return min_eval, best_action
 
-
-# ==================== LOGIC XẾP HÀNG (TẠI NHÀ GIAO) ====================
+# ==================== LOGIC XẾP HÀNG ====================
 C4_ROWS = 5
 C4_COLS = 6
 EMPTY = 0
@@ -162,7 +221,6 @@ def minimax_drop(node, depth, is_maximizing):
         return min_eval, best_action
 
 # ==================== MAIN GAME ====================
-
 def load_assets(cell_size):
     def load(name, custom_size=None):
         try:
@@ -180,9 +238,8 @@ def load_assets(cell_size):
         'nofly': load('Nofly.jpg'),
         'tree': load('Tree.png'),
         'warehouse': load('Warehouse.jpg'),
-        # Thêm 2 dòng này để load ảnh cho game thả hàng (kích thước 60x60 pixel)
-        'c4_player': load('box.png', (60, 60)), 
-        'c4_ai': load('lock.png', (60, 60))
+        'c4_player': load('player_box.png', (60, 60)), 
+        'c4_ai': load('ai_box.png', (60, 60))
     }
 
 def random_map(size, obstacle_prob=0.12, seed=None):
@@ -201,7 +258,7 @@ def random_map(size, obstacle_prob=0.12, seed=None):
     grid[dx][dy] = 3
     wx, wy = free_cells[1]
     grid[wx][wy] = 4
-    hcount = min(3, len(free_cells) - 2)
+    hcount = min(4, len(free_cells) - 2)
     for idx in range(2, 2 + hcount):
         hx, hy = free_cells[idx]
         grid[hx][hy] = 5
@@ -237,10 +294,6 @@ def ui_to_algo_grid(grid, targets):
     return algo_grid
 
 def compute_path_to_target(start, target, grid, algo):
-    temp_grid = [list(row) for row in grid]
-    for i in range(len(temp_grid)):
-        for j in range(len(temp_grid[i])):
-            if temp_grid[i][j] == 4: temp_grid[i][j] = 0
     targets = [target] if isinstance(target, tuple) else list(target)
     search_grid = ui_to_algo_grid(grid, targets)
     t0 = time.time()
@@ -292,12 +345,20 @@ def main():
     grid = random_map(GRID_SIZE, obstacle_prob=0.12)
     start = None
     goal = None
+    warehouse_orders = []
     houses = []
+    
     for i in range(GRID_SIZE):
         for j in range(GRID_SIZE):
             if grid[i][j] == 3: start = (i, j)
             elif grid[i][j] == 4: goal = (i, j)
-            elif grid[i][j] == 5: houses.append((i, j))
+            elif grid[i][j] == 5: 
+                grid[i][j] = 0 
+                warehouse_orders.append({
+                    'w': random.randint(3, 7), 
+                    'v': random.randint(10, 50),
+                    'pos': (i, j)
+                })
             
     if start is None:
         start = (0, 0)
@@ -306,24 +367,27 @@ def main():
         goal = (GRID_SIZE-1, GRID_SIZE-1)
         grid[goal[0]][goal[1]] = 4
     base = start
+    
     selected_algo_name = 'A*'
     algo = choose_algorithm(selected_algo_name)
+    algo_options = list(ALG_MAP.keys())
+    dropdown_open = False
+    dropdown_scroll_offset = 0
+    max_visible_items = 5
+    
+    pack_options = ["Backtracking", "Forward Checking"]
+    selected_pack_name = pack_options[0]
+    pack_dropdown_open = False
+    
     path = []
     visited = set()
     total_cost = 0
     runtime_ms = 0
     running = True
     
-    algo_options = list(ALG_MAP.keys())
-    dropdown_open = False
-    dropdown_rect = None
-    options_rects = []
-    dropdown_scroll_offset = 0
-    max_visible_items = 5
     delivery_state = "IDLE"
     current_target = None
     
-    # === THÔNG SỐ LOG ===
     delivery_log = []
     log_scroll_offset = 0
     max_visible_logs = 6
@@ -333,13 +397,11 @@ def main():
     delivered_count = 0
     delivered_houses = []
     
-    # State: Caro
     caro_board = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
     in_minigame_caro = False
     caro_player_turn = True
     caro_rects = [[None for _ in range(3)] for _ in range(3)]
     
-    # State: Connect 4
     connect4_board = [[EMPTY for _ in range(C4_COLS)] for _ in range(C4_ROWS)]
     in_connect4 = False
     c4_player_turn = True
@@ -349,18 +411,37 @@ def main():
     current_difficulty_idx = 2 
     
     fuel = 60
+    MAX_WEIGHT = 15 
     current_step = 0
     move_timer = 0
     ai_timer = 0 
+    
+    pack_history = []
+    pack_best_route = None
+    pack_think_step = 0
+    pack_think_timer = 0
+    pack_capacity = 15
 
     while running:
         now = pygame.time.get_ticks()
         
-        # Calculate boundaries
-        dropdown_y = PADDING + 50
+        # Calculate GUI boundaries
         dropdown_height = font_size + 10
+        algo_title_y = PADDING + 10
+        dropdown_y = algo_title_y + 30
         dropdown_rect = pygame.Rect(PADDING + 10, dropdown_y, LEFT_PANEL - PADDING - 20, dropdown_height)
-        diff_rect = pygame.Rect(PADDING + 10, PADDING + 130, LEFT_PANEL - PADDING - 20, font_size + 10)
+        
+        pack_title_y = dropdown_rect.bottom + 15
+        pack_dropdown_y = pack_title_y + 30
+        pack_dropdown_rect = pygame.Rect(PADDING + 10, pack_dropdown_y, LEFT_PANEL - PADDING - 20, dropdown_height)
+        
+        diff_title_y = pack_dropdown_rect.bottom + 15
+        diff_rect_y = diff_title_y + 30
+        diff_rect = pygame.Rect(PADDING + 10, diff_rect_y, LEFT_PANEL - PADDING - 20, font_size + 10)
+        
+        ctrl_y = diff_rect.bottom + 20
+        stats_y = ctrl_y + 80
+        log_y = stats_y + 190 
         
         c4_board_width = 420
         c4_board_height = 350
@@ -385,22 +466,35 @@ def main():
                     clicked_dropdown = False
                     
                     if dropdown_open:
-                        for i, opt_rect in enumerate(options_rects):
+                        visible_items = algo_options[dropdown_scroll_offset:dropdown_scroll_offset + max_visible_items]
+                        for i, opt in enumerate(visible_items):
+                            opt_rect = pygame.Rect(PADDING + 10, dropdown_rect.bottom + i * (font_size + 5), LEFT_PANEL - PADDING - 20, font_size + 5)
                             if opt_rect.collidepoint(event.pos):
-                                selected_algo_name = algo_options[dropdown_scroll_offset + i]
+                                selected_algo_name = opt
                                 algo = choose_algorithm(selected_algo_name)
                                 dropdown_open = False
                                 clicked_dropdown = True
                                 break
-                    
-                    if dropdown_rect and dropdown_rect.collidepoint(event.pos) and not clicked_dropdown:
+                    if dropdown_rect.collidepoint(event.pos) and not clicked_dropdown and not pack_dropdown_open:
                         dropdown_open = not dropdown_open
                         dropdown_scroll_offset = 0
                         clicked_dropdown = True
-                        
+
+                    if pack_dropdown_open and not clicked_dropdown:
+                        for i, opt in enumerate(pack_options):
+                            opt_rect = pygame.Rect(PADDING + 10, pack_dropdown_rect.bottom + i * (font_size + 5), LEFT_PANEL - PADDING - 20, font_size + 5)
+                            if opt_rect.collidepoint(event.pos):
+                                selected_pack_name = opt
+                                pack_dropdown_open = False
+                                clicked_dropdown = True
+                                break
+                    if pack_dropdown_rect.collidepoint(event.pos) and not clicked_dropdown and not dropdown_open:
+                        pack_dropdown_open = not pack_dropdown_open
+                        clicked_dropdown = True
+
                     if not clicked_dropdown:
-                        if dropdown_open: 
-                            dropdown_open = False 
+                        dropdown_open = False 
+                        pack_dropdown_open = False
                             
                         if not in_minigame_caro and not in_connect4 and diff_rect.collidepoint(event.pos):
                             current_difficulty_idx = (current_difficulty_idx + 1) % len(DIFFICULTY_LEVELS)
@@ -425,17 +519,11 @@ def main():
                                     ai_timer = pygame.time.get_ticks() 
 
                 elif event.button == 4: 
-                    if dropdown_open:
-                        dropdown_scroll_offset = max(0, dropdown_scroll_offset - 1)
-                    elif log_rect.collidepoint(event.pos):
-                        log_scroll_offset = max(0, log_scroll_offset - 1)
+                    if dropdown_open: dropdown_scroll_offset = max(0, dropdown_scroll_offset - 1)
+                    elif log_rect.collidepoint(event.pos): log_scroll_offset = max(0, log_scroll_offset - 1)
                 elif event.button == 5: 
-                    if dropdown_open:
-                        max_scroll = max(0, len(algo_options) - max_visible_items)
-                        dropdown_scroll_offset = min(max_scroll, dropdown_scroll_offset + 1)
-                    elif log_rect.collidepoint(event.pos):
-                        max_log_scroll = max(0, len(delivery_log) - max_visible_logs)
-                        log_scroll_offset = min(max_log_scroll, log_scroll_offset + 1)
+                    if dropdown_open: dropdown_scroll_offset = min(max(0, len(algo_options) - max_visible_items), dropdown_scroll_offset + 1)
+                    elif log_rect.collidepoint(event.pos): log_scroll_offset = min(max(0, len(delivery_log) - max_visible_logs), log_scroll_offset + 1)
             
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
@@ -444,10 +532,14 @@ def main():
                     grid = random_map(GRID_SIZE, obstacle_prob=0.12)
                     start = None
                     goal = None
+                    warehouse_orders = []
                     for i in range(GRID_SIZE):
                         for j in range(GRID_SIZE):
                             if grid[i][j] == 3: start = (i, j)
                             elif grid[i][j] == 4: goal = (i, j)
+                            elif grid[i][j] == 5: 
+                                grid[i][j] = 0
+                                warehouse_orders.append({'w': random.randint(3, 7), 'v': random.randint(10, 50), 'pos': (i, j)})
                     if start is None:
                         start = (0,0)
                         grid[start[0]][start[1]] = 3
@@ -464,11 +556,8 @@ def main():
                     prev_log_length = 0
                     delivered_count = 0
                     dropdown_open = False
-                    dropdown_scroll_offset = 0
+                    pack_dropdown_open = False
                     houses = []
-                    for i in range(GRID_SIZE):
-                        for j in range(GRID_SIZE):
-                            if grid[i][j] == 5: houses.append((i, j))
                     in_minigame_caro = False
                     caro_board = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
                     caro_player_turn = True
@@ -480,24 +569,27 @@ def main():
                 elif event.key == pygame.K_SPACE:
                     if delivery_state in ("IDLE", "OUT_OF_FUEL") and not in_minigame_caro and not in_connect4:
                         if fuel <= 0: fuel = 60
-                        start = base
-                        delivery_state = "PICKING"
-                        delivery_log.append("Bay tới Kho...")
-                        delivered_count = 0
-                        delivered_houses = []
-                        current_target = goal
-                        current_step = 0
-                        algo = choose_algorithm(selected_algo_name)
-                        path, total_cost, visited, runtime_ms = compute_path_to_target(start, current_target, grid, algo)
-                        if not path:
-                            delivery_state = "IDLE"
-                        move_timer = pygame.time.get_ticks()
+                        if warehouse_orders:
+                            start = base
+                            delivery_state = "PICKING"
+                            delivery_log.append("Bay tới Kho lấy hàng...")
+                            delivered_count = 0
+                            delivered_houses = []
+                            current_target = goal
+                            current_step = 0
+                            algo = choose_algorithm(selected_algo_name)
+                            path, total_cost, visited, runtime_ms = compute_path_to_target(start, current_target, grid, algo)
+                            if not path:
+                                delivery_state = "IDLE"
+                            move_timer = pygame.time.get_ticks()
+                        else:
+                            delivery_log.append("Kho đã giao hết hàng!")
 
         if len(delivery_log) != prev_log_length:
             log_scroll_offset = max(0, len(delivery_log) - max_visible_logs)
             prev_log_length = len(delivery_log)
 
-        # ================= AI CARO =================
+        # ================= AI CARO & QUYẾT ĐỊNH TẢI TRỌNG =================
         if in_minigame_caro and not caro_player_turn and (now - ai_timer > 300):
             opt_prob = 1.0 
             if DIFFICULTY_LEVELS[current_difficulty_idx] == "DỄ": opt_prob = 0.20 
@@ -509,39 +601,84 @@ def main():
                 available_moves = get_actions_caro(caro_board)
                 best_move = random.choice(available_moves) if available_moves else None
 
-            if best_move:
-                caro_board[best_move[0]][best_move[1]] = 2
+            if best_move: caro_board[best_move[0]][best_move[1]] = 2
             caro_player_turn = True
 
         if in_minigame_caro and is_terminal_caro(caro_board):
             pygame.time.delay(1000)
             winner = check_winner_caro(caro_board)
+            pack_capacity = MAX_WEIGHT
+            
             if winner == 1:
                 fuel += 50
-                delivery_log.append("Caro Thắng! +50 Nhiên liệu")
+                delivery_log.append("Caro Thắng! Lấy tối đa tải trọng")
             elif winner == 2:
-                delivery_log.append("Caro Thua! Không có nhiên liệu")
+                if DIFFICULTY_LEVELS[current_difficulty_idx] == "KHÓ":
+                    delivery_log.append("Caro Thua (Khó)! Hủy chuyến giao!")
+                    delivery_state = "IDLE"
+                    in_minigame_caro = False
+                    caro_board = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+                    caro_player_turn = True
+                    continue 
+                else:
+                    pack_capacity = MAX_WEIGHT // 2 
+                    delivery_log.append(f"Caro Thua! Phạt chỉ lấy {pack_capacity}kg")
             else:
                 fuel += 20
-                delivery_log.append("Caro Hòa! +20 Nhiên liệu")
+                delivery_log.append("Caro Hòa! Lấy tối đa tải trọng")
 
             in_minigame_caro = False
             caro_board = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
             caro_player_turn = True
             
-            if houses:
-                delivery_state = "DELIVERING"
-                current_target = houses
+            if selected_pack_name == "Backtracking":
+                pack_best_route, pack_history = knapsack_backtracking(warehouse_orders, pack_capacity)
             else:
-                delivery_state = "RETURNING"
-                current_target = base
+                pack_best_route, pack_history = knapsack_forward_checking(warehouse_orders, pack_capacity)
+                
+            delivery_state = "THINKING_PACK"
+            pack_think_step = 0
+            pack_think_timer = pygame.time.get_ticks()
 
-            if delivery_state != "IDLE":
-                start = path[-1]
-                algo = choose_algorithm(selected_algo_name)
-                path, total_cost, visited, runtime_ms = compute_path_to_target(start, current_target, grid, algo)
-                current_step = 0
-                move_timer = pygame.time.get_ticks()
+        # ================= CHẠY ANIMATION SẮP XẾP HÀNG (KNAPSACK) =================
+        if delivery_state == "THINKING_PACK":
+            if now - pack_think_timer > 250: 
+                if pack_think_step < len(pack_history):
+                    curr_sub, curr_w, curr_v, status = pack_history[pack_think_step]
+                    
+                    if status == "PRUNED_OVERWEIGHT":
+                        delivery_log.append(f"[QUÁ TẢI] Loại phương án {curr_w}kg")
+                    elif status == "RECORD":
+                        delivery_log.append(f"[KỶ LỤC] Thử chọn {len(curr_sub)} đơn ({curr_v}$)")
+                    elif status == "THINKING":
+                        delivery_log.append(f"[ĐANG XẾP] {len(curr_sub)} đơn (Nặng: {curr_w}kg)")
+                        
+                pack_think_timer = now
+                pack_think_step += 1
+                
+                if pack_think_step >= len(pack_history):
+                    selected_orders = pack_best_route
+                    if not selected_orders:
+                        delivery_log.append("Đơn còn lại quá nặng! Không bốc được")
+                        delivery_state = "IDLE"
+                    else:
+                        total_w = sum(o['w'] for o in selected_orders)
+                        total_v = sum(o['v'] for o in selected_orders)
+                        delivery_log.append(f"XONG! Bốc {len(selected_orders)} đơn ({total_w}kg - {total_v}$)")
+                        houses = []
+                        for o in selected_orders:
+                            houses.append(o['pos'])
+                            grid[o['pos'][0]][o['pos'][1]] = 5 
+                            warehouse_orders.remove(o) 
+                            
+                        delivery_state = "DELIVERING"
+                        current_target = houses
+                        drone_pos = path[current_step] if path else base
+                        start = drone_pos
+                        algo = choose_algorithm(selected_algo_name)
+                        path, total_cost, visited, runtime_ms = compute_path_to_target(start, current_target, grid, algo)
+                        current_step = 0
+                        move_timer = pygame.time.get_ticks()
 
         # ================= AI CONNECT 4 =================
         if in_connect4 and not c4_player_turn and (now - ai_timer > 300):
@@ -579,12 +716,35 @@ def main():
             delivered_count += 1
             delivered_houses.append(current_house)
             houses = [h for h in houses if h != current_house]
-            grid[current_house[0]][current_house[1]] = 0
+            grid[current_house[0]][current_house[1]] = 0 
             
+            if houses:
+                current_target = houses
+                drone_pos = path[current_step] if path else base
+                start = drone_pos
+                algo = choose_algorithm(selected_algo_name)
+                path, total_cost, visited, runtime_ms = compute_path_to_target(start, current_target, grid, algo)
+                current_step = 0
+            else:
+                if warehouse_orders:
+                    delivery_state = "RETURNING"
+                    current_target = goal
+                    delivery_log.append("Vẫn còn hàng trong kho. Đang bay về!")
+                else:
+                    delivery_state = "RETURNING"
+                    current_target = goal
+                    delivery_log.append("Giao hết mọi đơn. Quay về kho!")
+                    
+                drone_pos = path[current_step] if path else base
+                start = drone_pos
+                algo = choose_algorithm(selected_algo_name)
+                path, total_cost, visited, runtime_ms = compute_path_to_target(start, current_target, grid, algo)
+                current_step = 0
+                
             move_timer = pygame.time.get_ticks()
 
         # ================= MOVEMENT DRONE =================
-        if path and delivery_state not in ("IDLE", "OUT_OF_FUEL") and not in_minigame_caro and not in_connect4:
+        if path and delivery_state not in ("IDLE", "OUT_OF_FUEL", "THINKING_PACK") and not in_minigame_caro and not in_connect4:
             if now - move_timer > 150:
                 move_timer = now
                 if current_step < len(path) - 1:
@@ -605,46 +765,73 @@ def main():
                 if current_step == len(path) - 1 and fuel >= 0 and delivery_state != "OUT_OF_FUEL" and not in_connect4:
                     if delivery_state == "PICKING":
                         in_minigame_caro = True
-                        delivery_log.append("Đến Kho. Bắt đầu Caro!")
-                    elif delivery_state == "DELIVERING":
-                        delivery_state = "RETURNING"
-                        current_target = base
-                        start = path[-1]
-                        algo = choose_algorithm(selected_algo_name)
-                        path, total_cost, visited, runtime_ms = compute_path_to_target(start, current_target, grid, algo)
-                        current_step = 0
+                        delivery_log.append("Đến Kho. Bắt đầu Truy cập kho!")
                     elif delivery_state == "RETURNING":
-                        delivery_state = "IDLE"
-                        delivery_log.append("Hoàn thành nhiệm vụ!")
+                        if warehouse_orders:
+                            in_minigame_caro = True
+                            delivery_state = "PICKING"
+                            delivery_log.append("Đã về kho. Truy cập bốc mẻ tiếp theo!")
+                        else:
+                            delivery_state = "IDLE"
+                            delivery_log.append("Hoàn thành mọi nhiệm vụ trong ngày!")
 
         screen.fill((30, 30, 30))
         
-        # Vẽ Panel trái
+        # ================= VẼ BẢNG ĐIỀU KHIỂN BÊN TRÁI =================
         panel_x = PADDING
         panel_y = PADDING
         pygame.draw.rect(screen, (40, 40, 40), (panel_x, panel_y, LEFT_PANEL - PADDING, GRID_SIZE * CELL_SIZE))
-        screen.blit(bigfont.render('THUẬT TOÁN', True, (200, 200, 200)), (panel_x + 10, panel_y + 10))
         
+        screen.blit(bigfont.render('THUẬT TOÁN TÌM ĐƯỜNG', True, (200, 200, 200)), (panel_x + 10, algo_title_y))
         pygame.draw.rect(screen, (60, 60, 60), dropdown_rect, 2)
-        screen.blit(font.render(selected_algo_name, True, (255, 255, 100)), (panel_x + 15, dropdown_y + 5))
-        arrow_x = dropdown_rect.right - 15
-        arrow_y = dropdown_rect.centery
-        pygame.draw.polygon(screen, (200, 200, 200), [(arrow_x, arrow_y - 3), (arrow_x + 5, arrow_y - 3), (arrow_x + 2.5, arrow_y + 3)])
+        screen.blit(font.render(selected_algo_name, True, (255, 255, 100)), (panel_x + 15, dropdown_rect.y + 5))
+        pygame.draw.polygon(screen, (200, 200, 200), [(dropdown_rect.right - 15, dropdown_rect.centery - 3), (dropdown_rect.right - 10, dropdown_rect.centery - 3), (dropdown_rect.right - 12.5, dropdown_rect.centery + 3)])
         
-        diff_title_y = panel_y + 100
+        screen.blit(bigfont.render('SẮP XẾP HÀNG (KNAPSACK)', True, (200, 200, 200)), (panel_x + 10, pack_title_y))
+        pygame.draw.rect(screen, (60, 60, 60), pack_dropdown_rect, 2)
+        screen.blit(font.render(selected_pack_name, True, (255, 255, 100)), (panel_x + 15, pack_dropdown_rect.y + 5))
+        pygame.draw.polygon(screen, (200, 200, 200), [(pack_dropdown_rect.right - 15, pack_dropdown_rect.centery - 3), (pack_dropdown_rect.right - 10, pack_dropdown_rect.centery - 3), (pack_dropdown_rect.right - 12.5, pack_dropdown_rect.centery + 3)])
+
         screen.blit(bigfont.render('ĐỘ KHÓ MINIGAME', True, (200, 200, 200)), (panel_x + 10, diff_title_y))
         pygame.draw.rect(screen, (60, 60, 60), diff_rect, 2)
-        
         diff_color = (255, 100, 100)
         if DIFFICULTY_LEVELS[current_difficulty_idx] == "DỄ": diff_color = (100, 255, 100)
         elif DIFFICULTY_LEVELS[current_difficulty_idx] == "TRUNG BÌNH": diff_color = (255, 255, 100)
         screen.blit(font.render(DIFFICULTY_LEVELS[current_difficulty_idx], True, diff_color), (panel_x + 15, diff_rect.y + 5))
         
-        ctrl_y = panel_y + 200
         screen.blit(font.render('[SPACE] START', True, (200,200,200)), (panel_x + 10, ctrl_y))
         screen.blit(font.render('[R] RANDOM', True, (200,200,200)), (panel_x + 10, ctrl_y + font_size + 5))
         screen.blit(font.render('[ESC] EXIT', True, (200,200,200)), (panel_x + 10, ctrl_y + 2*(font_size + 5)))
 
+        screen.blit(bigfont.render('THỐNG KÊ', True, (200,200,200)), (panel_x + 10, stats_y))
+        screen.blit(font.render(f"Nodes Visited : {len(visited)}", True, (200,200,200)), (panel_x + 12, stats_y + 36))
+        screen.blit(font.render(f"Path Length   : {max(0, len(path)-1)}", True, (200,200,200)), (panel_x + 12, stats_y + 56))
+        screen.blit(font.render(f"Total Cost    : {total_cost}", True, (200,200,200)), (panel_x + 12, stats_y + 76))
+        screen.blit(font.render(f"Runtime       : {runtime_ms} ms", True, (200,200,200)), (panel_x + 12, stats_y + 96))
+        screen.blit(font.render(f"Kho chờ giao  : {len(warehouse_orders)} đơn", True, (255,200,100)), (panel_x + 12, stats_y + 116))
+        screen.blit(font.render(f"Đã giao xong  : {len(delivered_houses)} đơn", True, (200,200,200)), (panel_x + 12, stats_y + 136))
+        
+        fuel_color = (100, 255, 100)
+        if fuel < 20: fuel_color = (255, 100, 100)
+        elif fuel < 40: fuel_color = (255, 255, 100)
+        screen.blit(font.render(f"Nhiên liệu    : {fuel}", True, fuel_color), (panel_x + 12, stats_y + 156))
+        
+        log_rect = pygame.Rect(panel_x + 10, log_y, LEFT_PANEL - PADDING - 10, screen_height - log_y - PADDING)
+        pygame.draw.rect(screen, (50, 50, 50), log_rect, border_radius=5)
+        screen.blit(bigfont.render('LỊCH SỬ LOG', True, (200,200,200)), (panel_x + 15, log_y + 5))
+        
+        max_visible_logs = (log_rect.height - 40) // (font_size + 4)
+        if len(delivery_log) > max_visible_logs:
+            start_idx = log_scroll_offset + 1
+            end_idx = min(log_scroll_offset + max_visible_logs, len(delivery_log))
+            scroll_text = f"{start_idx}-{end_idx} / {len(delivery_log)}"
+            screen.blit(font.render(scroll_text, True, (150,150,150)), (panel_x + LEFT_PANEL - 120, log_y + 10))
+
+        visible_logs = delivery_log[log_scroll_offset : log_scroll_offset + max_visible_logs]
+        for i, log_line in enumerate(visible_logs):
+            screen.blit(font.render(log_line[:45], True, (200, 200, 200)), (panel_x + 15, log_y + 35 + i*(font_size + 4)))
+
+        # ================= VẼ LƯỚI BẢN ĐỒ BÊN PHẢI =================
         grid_x0 = LEFT_PANEL + PADDING + (GRID_WIDTH - GRID_SIZE * CELL_SIZE) // 2
         grid_y0 = PADDING + (GRID_HEIGHT - GRID_SIZE * CELL_SIZE) // 2
         
@@ -697,33 +884,58 @@ def main():
             if assets.get('drone'): screen.blit(assets['drone'], (grid_x0 + sy*CELL_SIZE, grid_y0 + sx*CELL_SIZE))
             else: pygame.draw.circle(screen, (255, 0, 0), (grid_x0 + sy*CELL_SIZE + CELL_SIZE//2, grid_y0 + sx*CELL_SIZE + CELL_SIZE//2), CELL_SIZE//3)
 
-        stats_y = panel_y + 300
-        screen.blit(bigfont.render('THỐNG KÊ', True, (200,200,200)), (panel_x + 10, stats_y))
-        screen.blit(font.render(f"Nodes Visited : {len(visited)}", True, (200,200,200)), (panel_x + 12, stats_y + 36))
-        screen.blit(font.render(f"Path Length   : {max(0, len(path)-1)}", True, (200,200,200)), (panel_x + 12, stats_y + 56))
-        screen.blit(font.render(f"Total Cost    : {total_cost}", True, (200,200,200)), (panel_x + 12, stats_y + 76))
-        screen.blit(font.render(f"Delivered     : {len(delivered_houses)}", True, (200,200,200)), (panel_x + 12, stats_y + 96))
-        
-        fuel_color = (100, 255, 100)
-        if fuel < 20: fuel_color = (255, 100, 100)
-        elif fuel < 40: fuel_color = (255, 255, 100)
-        screen.blit(font.render(f"Nhiên liệu    : {fuel}", True, fuel_color), (panel_x + 12, stats_y + 116))
-        
-        log_y = stats_y + 150
-        log_rect = pygame.Rect(panel_x + 10, log_y, LEFT_PANEL - PADDING - 10, 170)
-        
-        pygame.draw.rect(screen, (50, 50, 50), log_rect, border_radius=5)
-        screen.blit(bigfont.render('LỊCH SỬ LOG', True, (200,200,200)), (panel_x + 15, log_y + 5))
-        
-        if len(delivery_log) > max_visible_logs:
-            start_idx = log_scroll_offset + 1
-            end_idx = min(log_scroll_offset + max_visible_logs, len(delivery_log))
-            scroll_text = f"{start_idx}-{end_idx} / {len(delivery_log)}"
-            screen.blit(font.render(scroll_text, True, (150,150,150)), (panel_x + LEFT_PANEL - 120, log_y + 10))
+        # ================= VẼ DANH SÁCH ĐƠN HÀNG TRONG KHO (HUD) =================
+        if warehouse_orders:
+            wh_panel_w = 200
+            wh_panel_h = 40 + len(warehouse_orders) * 25
+            wh_px = screen_width - wh_panel_w - PADDING
+            wh_py = PADDING
+            
+            wh_surface = pygame.Surface((wh_panel_w, wh_panel_h))
+            wh_surface.set_alpha(220)
+            wh_surface.fill((40, 40, 40))
+            screen.blit(wh_surface, (wh_px, wh_py))
+            pygame.draw.rect(screen, (200, 200, 200), (wh_px, wh_py, wh_panel_w, wh_panel_h), 1, border_radius=5)
+            
+            screen.blit(font.render("HÀNG TRONG KHO", True, (255, 200, 100)), (wh_px + 15, wh_py + 10))
+            for idx, order in enumerate(warehouse_orders):
+                item_txt = f"Kiện {idx+1}: {order['w']}kg  -  {order['v']}$"
+                screen.blit(font.render(item_txt, True, (220, 220, 220)), (wh_px + 15, wh_py + 35 + idx*25))
 
-        visible_logs = delivery_log[log_scroll_offset : log_scroll_offset + max_visible_logs]
-        for i, log_line in enumerate(visible_logs):
-            screen.blit(font.render(log_line[:45], True, (200, 200, 200)), (panel_x + 15, log_y + 35 + i*(font_size + 4)))
+        # ================= VẼ GIAO DIỆN CHỜ XẾP HÀNG LÊN DRONE =================
+        if delivery_state == "THINKING_PACK" and pack_think_step < len(pack_history):
+            curr_sub, curr_w, curr_v, status = pack_history[pack_think_step]
+            
+            panel_w, panel_h = 360, 180
+            px = grid_x0 + (GRID_WIDTH - panel_w) // 2
+            py = grid_y0 + (GRID_HEIGHT - panel_h) // 2
+            
+            pygame.draw.rect(screen, (40, 40, 40), (px, py, panel_w, panel_h), border_radius=10)
+            pygame.draw.rect(screen, (200, 200, 200), (px, py, panel_w, panel_h), 2, border_radius=10)
+            
+            screen.blit(bigfont.render("ĐANG BỐC HÀNG VÀO DRONE", True, (255, 255, 100)), (px + 20, py + 15))
+            
+            bar_w = 320
+            bar_h = 30
+            pygame.draw.rect(screen, (80, 80, 80), (px + 20, py + 60, bar_w, bar_h))
+            
+            fill_w = min(bar_w, int(bar_w * (curr_w / pack_capacity))) if pack_capacity > 0 else 0
+            bar_color = (100, 255, 100) if curr_w <= pack_capacity else (255, 100, 100)
+            pygame.draw.rect(screen, bar_color, (px + 20, py + 60, fill_w, bar_h))
+            
+            screen.blit(font.render(f"Trọng lượng : {curr_w} / {pack_capacity} kg", True, (255, 255, 255)), (px + 25, py + 65))
+            screen.blit(font.render(f"Giá trị đơn : {curr_v} $", True, (255, 200, 100)), (px + 20, py + 105))
+            
+            status_text = "Đang thử xếp tổ hợp này..."
+            status_color = (255, 255, 100)
+            if status == "PRUNED_OVERWEIGHT":
+                status_text = "Quá nặng! Thử kiện hàng khác..."
+                status_color = (255, 100, 100)
+            elif status == "RECORD":
+                status_text = "Vừa vặn! Tạm ghi nhớ tổ hợp này."
+                status_color = (100, 255, 100)
+                
+            screen.blit(font.render(status_text, True, status_color), (px + 20, py + 140))
 
         # ================= VẼ GIAO DIỆN CARO =================
         if in_minigame_caro:
@@ -736,6 +948,9 @@ def main():
             start_x = screen_width // 2 - board_size // 2
             start_y = screen_height // 2 - board_size // 2
             cell_s = board_size // 3
+            
+            caro_title = bigfont.render("TRUY CẬP KHO", True, (255, 255, 100))
+            screen.blit(caro_title, (screen_width // 2 - caro_title.get_width() // 2, start_y - 40))
             
             pygame.draw.rect(screen, (255, 255, 255), (start_x, start_y, board_size, board_size), 5)
             for r in range(3):
@@ -761,17 +976,14 @@ def main():
                     radius = int(c4_cell_s/2 - 5)
                     
                     if connect4_board[r][c] == EMPTY:
-                        # Ô trống vẽ vòng tròn xám đen
                         pygame.draw.circle(screen, (20, 20, 20), (center_x, center_y), radius)
                     elif connect4_board[r][c] == PLAYER_C4:
-                        # Ô của người chơi -> Vẽ ảnh player_box.png
                         if assets.get('c4_player'):
                             img_rect = assets['c4_player'].get_rect(center=(center_x, center_y))
                             screen.blit(assets['c4_player'], img_rect)
                         else:
                             pygame.draw.circle(screen, (255, 50, 50), (center_x, center_y), radius)
                     elif connect4_board[r][c] == AI_C4:
-                        # Ô của máy -> Vẽ ảnh ai_box.png
                         if assets.get('c4_ai'):
                             img_rect = assets['c4_ai'].get_rect(center=(center_x, center_y))
                             screen.blit(assets['c4_ai'], img_rect)
@@ -781,36 +993,52 @@ def main():
             title_text = bigfont.render("XẾP HÀNG - CLICK VÀO CỘT ĐỂ THẢ", True, (255, 255, 255))
             screen.blit(title_text, (screen_width//2 - title_text.get_width()//2, c4_start_y - 40))
 
-        # ================= VẼ DROPDOWN MENU =================
-        options_rects = []
+        # ================= VẼ CÁC DROPDOWN MENU (NỔI LÊN TRÊN CÙNG) =================
         if dropdown_open:
             visible_items = algo_options[dropdown_scroll_offset:dropdown_scroll_offset + max_visible_items]
             list_height = len(visible_items) * (font_size + 5)
             if len(algo_options) > max_visible_items: list_height += font_size + 5
             
-            shadow_rect = pygame.Rect(PADDING + 13, dropdown_y + dropdown_height + 3, LEFT_PANEL - PADDING - 20, list_height)
+            shadow_rect = pygame.Rect(PADDING + 13, dropdown_rect.bottom + 3, LEFT_PANEL - PADDING - 20, list_height)
             pygame.draw.rect(screen, (20, 20, 20), shadow_rect)
             
-            bg_rect = pygame.Rect(PADDING + 10, dropdown_y + dropdown_height, LEFT_PANEL - PADDING - 20, list_height)
+            bg_rect = pygame.Rect(PADDING + 10, dropdown_rect.bottom, LEFT_PANEL - PADDING - 20, list_height)
             pygame.draw.rect(screen, (50, 50, 50), bg_rect)
             pygame.draw.rect(screen, (200, 200, 200), bg_rect, 1)
 
             for i, opt in enumerate(visible_items):
-                opt_y = dropdown_y + dropdown_height + i * (font_size + 5)
+                opt_y = dropdown_rect.bottom + i * (font_size + 5)
                 opt_rect = pygame.Rect(PADDING + 10, opt_y, LEFT_PANEL - PADDING - 20, font_size + 5)
                 opt_color = (100, 100, 150) if opt == selected_algo_name else (70, 70, 70)
                 pygame.draw.rect(screen, opt_color, opt_rect)
                 pygame.draw.rect(screen, (200, 200, 200), opt_rect, 1)
                 opt_text_color = (255, 255, 100) if opt == selected_algo_name else (200, 200, 200)
                 screen.blit(font.render(opt[:20], True, opt_text_color), (PADDING + 15, opt_y + 3))
-                options_rects.append(opt_rect)
             
             if len(algo_options) > max_visible_items:
-                scroll_text = f"UP/DOWN {dropdown_scroll_offset+1}/{len(algo_options)}"
-                scroll_bg_rect = pygame.Rect(PADDING + 10, dropdown_y + dropdown_height + max_visible_items * (font_size + 5), LEFT_PANEL - PADDING - 20, font_size + 5)
+                scroll_bg_rect = pygame.Rect(PADDING + 10, dropdown_rect.bottom + max_visible_items * (font_size + 5), LEFT_PANEL - PADDING - 20, font_size + 5)
                 pygame.draw.rect(screen, (50, 50, 50), scroll_bg_rect)
                 pygame.draw.rect(screen, (200, 200, 200), scroll_bg_rect, 1)
+                scroll_text = f"UP/DOWN {dropdown_scroll_offset+1}/{len(algo_options)}"
                 screen.blit(font.render(scroll_text, True, (150, 150, 100)), (PADDING + 15, scroll_bg_rect.y + 3))
+
+        if pack_dropdown_open:
+            list_height = len(pack_options) * (font_size + 5)
+            shadow_rect = pygame.Rect(PADDING + 13, pack_dropdown_rect.bottom + 3, LEFT_PANEL - PADDING - 20, list_height)
+            pygame.draw.rect(screen, (20, 20, 20), shadow_rect)
+            
+            bg_rect = pygame.Rect(PADDING + 10, pack_dropdown_rect.bottom, LEFT_PANEL - PADDING - 20, list_height)
+            pygame.draw.rect(screen, (50, 50, 50), bg_rect)
+            pygame.draw.rect(screen, (200, 200, 200), bg_rect, 1)
+
+            for i, opt in enumerate(pack_options):
+                opt_y = pack_dropdown_rect.bottom + i * (font_size + 5)
+                opt_rect = pygame.Rect(PADDING + 10, opt_y, LEFT_PANEL - PADDING - 20, font_size + 5)
+                opt_color = (100, 100, 150) if opt == selected_pack_name else (70, 70, 70)
+                pygame.draw.rect(screen, opt_color, opt_rect)
+                pygame.draw.rect(screen, (200, 200, 200), opt_rect, 1)
+                opt_text_color = (255, 255, 100) if opt == selected_pack_name else (200, 200, 200)
+                screen.blit(font.render(opt[:20], True, opt_text_color), (PADDING + 15, opt_y + 3))
 
         pygame.display.flip()
         clock.tick(FPS)
