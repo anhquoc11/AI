@@ -5,7 +5,7 @@ def Simple_Hill_Climbing(grid, start_i, start_j):
     start_state = copy.deepcopy(grid)
     start_state[start_i][start_j] = 0
     visited_positions = {(start_i, start_j)}
-    h_parent = Utility.count_box_cells(start_state)
+    h_parent = Utility.count_box_cells(start_state) * 100 + Utility.distance_to_nearest_house(start_i, start_j, start_state)
     if h_parent == 0:
         return [start_state], [],set()
     state_parent = start_state
@@ -20,7 +20,7 @@ def Simple_Hill_Climbing(grid, start_i, start_j):
             state_child = copy.deepcopy(state_parent)
             state_child[i_child][j_child] = 0 
             visited_positions.add((i_child, j_child))
-            h_child = Utility.count_box_cells(state_child)
+            h_child = Utility.count_box_cells(state_child) * 100 + Utility.distance_to_nearest_house(i_child, j_child, state_child)
             if h_child < h_parent:
                 h_parent = h_child
                 state_parent = state_child
