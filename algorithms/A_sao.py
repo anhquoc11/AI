@@ -16,11 +16,12 @@ def A_sao(grid, start_i, start_j):
     start_state[start_i][start_j] = 0
 
     if Utility.count_box_cells(start_state) == 0:
-        return [start_state], []
+        return [start_state], [],set()
 
     reached = {}
     visited_positions = set()
-    start_node = Node(start_i, start_j, start_state, None, None, 0, Utility.count_box_cells(start_state))
+    h_start = Utility.count_box_cells(start_state) * 100 + Utility.distance_to_nearest_house(start_i, start_j, start_state)
+    start_node = Node(start_i, start_j, start_state, None, None, 0, h_start)
     queue_priority = [start_node]
     visited_positions.add((start_i, start_j))
     reached[(start_i, start_j, tuple(tuple(row) for row in start_state))] = 0
@@ -39,7 +40,8 @@ def A_sao(grid, start_i, start_j):
             g_child = parent.G + energy
             state_child[i_child][j_child] = 0
             visited_positions.add((i_child, j_child))
-            child = Node(i_child, j_child, state_child, action, parent, g_child, Utility.count_box_cells(state_child) + g_child)
+            h_child = Utility.count_box_cells(state_child) * 100 + Utility.distance_to_nearest_house(i_child, j_child, state_child)
+            child = Node(i_child, j_child, state_child, action, parent, g_child, h_child + g_child)
             key = (i_child, j_child,tuple(tuple(row) for row in state_child))
             if key not in reached or g_child < reached[key]:
                 queue_priority = Utility.queue_priority_add(queue_priority, child)

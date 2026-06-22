@@ -17,7 +17,7 @@ def BFS(grid, start_i, start_j):
     start_state[start_i][start_j] = 0
     visited_positions.add((start_i, start_j))
     if Utility.count_box_cells(start_state) == 0:
-        return [start_state], [], visited_positions
+        return [start_state], [], set()
     queue.append(Node(start_i,start_j,start_state,None,None))
     reached.add((start_i,start_j,tuple(tuple(row) for row in start_state)))
     end = None

@@ -7,7 +7,7 @@ def Simple_Hill_Climbing(grid, start_i, start_j):
     visited_positions = {(start_i, start_j)}
     h_parent = Utility.count_box_cells(start_state)
     if h_parent == 0:
-        return [start_state], [], visited_positions
+        return [start_state], [],set()
     state_parent = start_state
     i_parent, j_parent = start_i, start_j
     path_states = [state_parent]

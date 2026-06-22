@@ -18,7 +18,7 @@ def greedy(grid, start_i, start_j):
     start_state[start_i][start_j] = 0
     visited_positions.add((start_i, start_j))
     if Utility.count_box_cells(start_state) == 0:
-        return [start_state], [], visited_positions
+        return [start_state], [],set()
     queue_priority = Utility.queue_priority_add_greedy(queue_priority,Node(start_i,start_j,start_state,None,None,0))
     reached[(start_i,start_j, tuple(tuple(row) for row in start_state))] = Utility.count_box_cells(start_state)
     end = None

@@ -21,6 +21,15 @@ def count_box_cells(board):
             if board[t][z] == 5: cost += 1
     return cost
 
+def distance_to_nearest_house(i, j, board):
+    min_distance = float('inf')
+    for t in range(len(board)):
+        for z in range(len(board[0])):
+            if board[t][z] == 5:
+                distance = abs(i - t) + abs(j - z)
+                min_distance = min(min_distance, distance)
+    return min_distance if min_distance != float('inf') else 0
+
 def queue_priority_add(queue, x):
     for index in range(len(queue)):
         if x.F <= queue[index].F: 
