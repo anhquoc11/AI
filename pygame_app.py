@@ -704,19 +704,17 @@ def main():
                 delivery_log.append("Giao hàng & Xếp Thắng! +30 Nhiên liệu")
             elif winning_move_c4(connect4_board, AI_C4):
                 fuel -= 10
-                delivery_log.append("Xếp hàng Thua! Phạt -10 Nhiên liệu")
-            else:
-                fuel += 10
-                delivery_log.append("Hòa! +10 Nhiên liệu")
-
+                if fuel < 0:
+                    fuel = 0
+            c4_player_turn = True
             in_connect4 = False
             connect4_board = [[EMPTY for _ in range(C4_COLS)] for _ in range(C4_ROWS)]
-            c4_player_turn = True
             
             delivered_count += 1
             delivered_houses.append(current_house)
             houses = [h for h in houses if h != current_house]
             grid[current_house[0]][current_house[1]] = 0 
+            current_house = None
             
             if houses:
                 current_target = houses
@@ -732,8 +730,8 @@ def main():
                     delivery_log.append("Vẫn còn hàng trong kho. Đang bay về!")
                 else:
                     delivery_state = "RETURNING"
-                    current_target = goal
-                    delivery_log.append("Giao hết mọi đơn. Quay về kho!")
+                    current_target = base
+                    delivery_log.append("Giao hết mọi đơn. Quay về vị trí ban đầu!")
                     
                 drone_pos = path[current_step] if path else base
                 start = drone_pos
@@ -750,6 +748,8 @@ def main():
                 if current_step < len(path) - 1:
                     if fuel > 0:
                         fuel -= 1
+                        if fuel < 0:
+                            fuel = 0
                         current_step += 1
                         dx, dy = path[current_step]
                         
