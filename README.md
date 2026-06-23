@@ -1,4 +1,4 @@
-# <center>Shipper Delivery Game</center>
+# <h1 align="center">Shipper Delivery Game</h1>
 
 <h4 align="center">Final Project of Artificial Intelligence Subject - 252ARIN330585_06<br>Ho Chi Minh City University of Technology and Engineering (HCMUTE)</h4>
 
