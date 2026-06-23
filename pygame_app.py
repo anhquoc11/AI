@@ -755,21 +755,22 @@ def main():
             if now - move_timer > 150:
                 move_timer = now
                 if current_step < len(path) - 1:
-                    if fuel > 0:
-                        fuel -= 1
-                        if fuel < 0:
-                            fuel = 0
+                    next_x, next_y = path[current_step + 1]
+                    cost = movement_cost(grid[next_x][next_y])
+                    if fuel >= cost:
+                        fuel -= cost
                         current_step += 1
                         dx, dy = path[current_step]
-                        
-                        if delivery_state == "DELIVERING":
-                            if (dx, dy) in houses and (dx, dy) not in delivered_houses:
-                                in_connect4 = True
-                                current_house = (dx, dy)
-                                delivery_log.append(f"Tại Nhà #{delivered_count+1}. Minigame Xếp Hàng!")
                     else:
                         delivery_state = "OUT_OF_FUEL"
                         delivery_log.append("HẾT NHIÊN LIỆU!")
+                        continue
+                        
+                    if delivery_state == "DELIVERING":
+                        if (dx, dy) in houses and (dx, dy) not in delivered_houses:
+                            in_connect4 = True
+                            current_house = (dx, dy)
+                            delivery_log.append(f"Tại Nhà #{delivered_count+1}. Minigame Xếp Hàng!")
                 
                 if current_step == len(path) - 1 and fuel >= 0 and delivery_state != "OUT_OF_FUEL" and not in_connect4:
                     if delivery_state == "PICKING":
