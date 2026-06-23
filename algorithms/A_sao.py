@@ -36,7 +36,7 @@ def A_sao(grid, start_i, start_j):
         for action in move_list:
             state_child = copy.deepcopy(parent.STATE)
             i_child, j_child = Utility.next_pos(parent.i, parent.j, action)
-            energy = 2 if state_child[i_child][j_child] == 2 else 1
+            energy = 5 if state_child[i_child][j_child] == 2 else 1
             g_child = parent.G + energy
             state_child[i_child][j_child] = 0
             visited_positions.add((i_child, j_child))

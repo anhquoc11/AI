@@ -20,7 +20,7 @@ def greedy(grid, start_i, start_j):
     if Utility.count_box_cells(start_state) == 0:
         return [start_state], [],set()
     queue_priority = Utility.queue_priority_add_greedy(queue_priority,Node(start_i,start_j,start_state,None,None,0))
-    reached[(start_i,start_j, tuple(tuple(row) for row in start_state))] = Utility.count_box_cells(start_state)
+    reached[(start_i,start_j, tuple(tuple(row) for row in start_state))] = Utility.count_box_cells(start_state) * 100 + Utility.distance_to_nearest_house(start_i, start_j, start_state)
     end = None
     while queue_priority:
         parent = queue_priority.pop(0)
@@ -33,12 +33,12 @@ def greedy(grid, start_i, start_j):
             i_child , j_child = Utility.next_pos(parent.i,parent.j,action)
             state_child[i_child][j_child] = 0
             visited_positions.add((i_child, j_child))
-            h = Utility.count_box_cells(state_child)
-            child = Node(i_child,j_child,state_child,action,parent,h)
+            h_child = Utility.count_box_cells(state_child) * 100 + Utility.distance_to_nearest_house(i_child, j_child, state_child)
+            child = Node(i_child,j_child,state_child,action,parent,h_child)
             key = (i_child, j_child,tuple(tuple(row) for row in state_child))
-            if key not in reached or reached[key] > h:
+            if key not in reached or reached[key] > h_child:
                 queue_priority = Utility.queue_priority_add_greedy(queue_priority,child)
-                reached[key] = h
+                reached[key] = h_child
     if end is None:
         return [], [], visited_positions
     path_states, actions = Utility.trace_path(end)

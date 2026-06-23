@@ -286,12 +286,21 @@ def ui_to_algo_grid(grid, targets):
     algo_grid = [[0 for _ in range(cols)] for _ in range(rows)]
     for i in range(rows):
         for j in range(cols):
-            if grid[i][j] == 1: algo_grid[i][j] = 1
-            else: algo_grid[i][j] = 0
+            if grid[i][j] == 1:
+                algo_grid[i][j] = 1
+            elif grid[i][j] == 2:
+                algo_grid[i][j] = 2
+            else:
+                algo_grid[i][j] = 0
     for tx, ty in targets:
         if 0 <= tx < rows and 0 <= ty < cols:
             algo_grid[tx][ty] = 5
     return algo_grid
+
+
+def movement_cost(cell_value):
+    return 5 if cell_value == 2 else 1
+
 
 def compute_path_to_target(start, target, grid, algo):
     targets = [target] if isinstance(target, tuple) else list(target)
@@ -313,7 +322,7 @@ def compute_path_to_target(start, target, grid, algo):
         positions.append(next_pos)
         visited.add(next_pos)
         current = next_pos
-        cost += 1
+        cost += movement_cost(grid[current[0]][current[1]])
     return positions, cost, visited, runtime_ms
 
 def main():
