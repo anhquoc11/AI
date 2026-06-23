@@ -238,8 +238,8 @@ def load_assets(cell_size):
         'nofly': load('Nofly.jpg'),
         'tree': load('Tree.png'),
         'warehouse': load('Warehouse.jpg'),
-        'c4_player': load('player_box.png', (60, 60)), 
-        'c4_ai': load('ai_box.png', (60, 60))
+        'c4_player': load('box.png', (60, 60)), 
+        'c4_ai': load('lock.png', (60, 60))
     }
 
 def random_map(size, obstacle_prob=0.12, seed=None):
@@ -906,7 +906,7 @@ def main():
         if delivery_state == "THINKING_PACK" and pack_think_step < len(pack_history):
             curr_sub, curr_w, curr_v, status = pack_history[pack_think_step]
             
-            panel_w, panel_h = 360, 180
+            panel_w, panel_h = 420, 180
             px = grid_x0 + (GRID_WIDTH - panel_w) // 2
             py = grid_y0 + (GRID_HEIGHT - panel_h) // 2
             
@@ -915,7 +915,7 @@ def main():
             
             screen.blit(bigfont.render("ĐANG BỐC HÀNG VÀO DRONE", True, (255, 255, 100)), (px + 20, py + 15))
             
-            bar_w = 320
+            bar_w = 380
             bar_h = 30
             pygame.draw.rect(screen, (80, 80, 80), (px + 20, py + 60, bar_w, bar_h))
             
