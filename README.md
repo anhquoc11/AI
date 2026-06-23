@@ -1,6 +1,6 @@
 # <h1 align="center">Shipper Delivery Game</h1>
 
-<h4 align="center">Final Project of Artificial Intelligence Subject - 252ARIN330585_06<br>Ho Chi Minh City University of Technology and Engineering (HCM-UTE)</h4>
+<h4 align="center">Final Project of Artificial Intelligence Course - 252ARIN330585_06<br>Ho Chi Minh City University of Technology and Engineering (HCM-UTE)</h4>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.14.3-3776AB?logo=python&logoColor=white" alt="Python">
@@ -73,7 +73,7 @@ NHET GIF VO DAY
 **6. Adversarial Search**
 
 -  [Minimax](./algorithms/minimax.py)
--  [Alpha - Beta](./algorithms/alpha_beta.py)
+-  [Alpha-Beta](./algorithms/alpha_beta.py)
 
 ## Features
 
