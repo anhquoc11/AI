@@ -322,7 +322,7 @@ def main():
     screen_width = 1280
     screen_height = 720
     screen = pygame.display.set_mode((screen_width, screen_height), pygame.RESIZABLE)
-    pygame.display.set_caption("Drone Delivery & AI Minigames")
+    pygame.display.set_caption("Delivery Game")
     clock = pygame.time.Clock()
     
     LEFT_PANEL = max(380, int(screen_width * 0.28))

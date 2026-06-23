@@ -1,4 +1,4 @@
-# <h1 align="center">Shipper Delivery Game</h1>
+# <h1 align="center">Delivery Game</h1>
 
 <h4 align="center">Final Project of Artificial Intelligence Course - 252ARIN330585_06<br>Ho Chi Minh City University of Technology and Engineering (HCM-UTE)</h4>
 
