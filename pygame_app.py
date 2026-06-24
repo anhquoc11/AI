@@ -14,6 +14,7 @@ from algorithms.Local_Beam_Search import Local_Beam_Search
 from algorithms.and_or_search import and_or_search
 from algorithms.backtracking import backtracking_route
 from algorithms.forward_checking import forward_checking_route
+from algorithms.BFS_MTPT import BFS_MTPT
 
 GRID_SIZE = 20
 PADDING = 15
@@ -26,6 +27,7 @@ ALG_MAP = {
     'A*': A_sao,
     'Hill Simple': Simple_Hill_Climbing,
     'Local Beam': Local_Beam_Search,
+    'BFS MTPT': lambda grid, i, j: BFS_MTPT([(grid, i, j)]) 
 }
 
 ASSET_PATH = "Assets/"
