@@ -11,7 +11,7 @@ from algorithms.greedy import greedy
 from algorithms.A_sao import A_sao
 from algorithms.Simple_Hill_Climbing import Simple_Hill_Climbing
 from algorithms.Local_Beam_Search import Local_Beam_Search
-
+from algorithms.and_or_search import and_or_search
 from algorithms.backtracking import backtracking_route
 from algorithms.forward_checking import forward_checking_route
 
@@ -324,7 +324,35 @@ def compute_path_to_target(start, target, grid, algo):
         current = next_pos
         cost += movement_cost(grid[current[0]][current[1]])
     return positions, cost, visited, runtime_ms
+def find_safe_orders(selected_orders, fuel, grid, start, algo):
 
+    history = []
+
+    for k in range(len(selected_orders), 0, -1):
+
+        candidate = selected_orders[:k]
+
+        houses = [o['pos'] for o in candidate]
+
+        path, total_cost, visited, runtime_ms = compute_path_to_target(
+            start,
+            houses,
+            grid,
+            algo
+        )
+
+        safe = and_or_search(
+            fuel,
+            total_cost,
+            len(houses)
+        )
+
+        history.append((k, safe))
+
+        if safe:
+            return candidate, total_cost, history
+
+    return [], 0, history
 def main():
     pygame.init()
     
@@ -678,17 +706,37 @@ def main():
                         for o in selected_orders:
                             houses.append(o['pos'])
                             grid[o['pos'][0]][o['pos'][1]] = 5 
-                            warehouse_orders.remove(o) 
-                            
-                        delivery_state = "DELIVERING"
                         current_target = houses
                         drone_pos = path[current_step] if path else base
                         start = drone_pos
                         algo = choose_algorithm(selected_algo_name)
-                        path, total_cost, visited, runtime_ms = compute_path_to_target(start, current_target, grid, algo)
-                        current_step = 0
-                        move_timer = pygame.time.get_ticks()
-
+                        path, total_cost, visited, runtime_ms = compute_path_to_target(
+                            start,
+                            current_target,
+                            grid,
+                            algo
+                            )
+                        safe_orders, safe_cost, ao_history = find_safe_orders(selected_orders,fuel,grid,start,algo)
+                        for num_orders, is_safe in ao_history:
+                            if is_safe:
+                                delivery_log.append(f"[AO] {num_orders} đơn -> AN TOÀN")
+                            else:delivery_log.append(f"[AO] {num_orders} đơn -> KHÔNG AN TOÀN")
+                        if safe_orders:
+                            for o in safe_orders:
+                                if o in warehouse_orders:
+                                    warehouse_orders.remove(o)
+                            houses = [o['pos'] for o in safe_orders]
+                            current_target = houses
+                            drone_pos = path[current_step] if path else start
+                            start = drone_pos
+                            path, total_cost, visited, runtime_ms = compute_path_to_target(start,current_target,grid,algo)
+                            delivery_log.append(f"[AO] Chọn {len(safe_orders)}/{len(selected_orders)} đơn an toàn")
+                            delivery_state = "DELIVERING"
+                            current_step = 0
+                            move_timer = pygame.time.get_ticks()
+                        else:
+                            delivery_log.append("[AO] Không tìm được phương án giao an toàn")
+                            delivery_state = "IDLE"
         # ================= AI CONNECT 4 =================
         if in_connect4 and not c4_player_turn and (now - ai_timer > 300):
             opt_prob = 1.0 
