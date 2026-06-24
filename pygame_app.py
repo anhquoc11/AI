@@ -722,17 +722,16 @@ def main():
                                 delivery_log.append(f"[AO] {num_orders} đơn -> AN TOÀN")
                             else:delivery_log.append(f"[AO] {num_orders} đơn -> KHÔNG AN TOÀN")
                         if safe_orders:
+                            houses = [o['pos'] for o in safe_orders]
+                            current_target = houses
+                            current_step = 0
+                            drone_pos = start
+                            path, total_cost, visited, runtime_ms = compute_path_to_target(start,current_target,grid,algo)
                             for o in safe_orders:
                                 if o in warehouse_orders:
                                     warehouse_orders.remove(o)
-                            houses = [o['pos'] for o in safe_orders]
-                            current_target = houses
-                            drone_pos = path[current_step] if path else start
-                            start = drone_pos
-                            path, total_cost, visited, runtime_ms = compute_path_to_target(start,current_target,grid,algo)
                             delivery_log.append(f"[AO] Chọn {len(safe_orders)}/{len(selected_orders)} đơn an toàn")
                             delivery_state = "DELIVERING"
-                            current_step = 0
                             move_timer = pygame.time.get_ticks()
                         else:
                             delivery_log.append("[AO] Không tìm được phương án giao an toàn")
