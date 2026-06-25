@@ -12,9 +12,9 @@ from algorithms.A_sao import A_sao
 from algorithms.Simple_Hill_Climbing import Simple_Hill_Climbing
 from algorithms.Local_Beam_Search import Local_Beam_Search
 from algorithms.and_or_search import and_or_search
-from algorithms.backtracking import backtracking_route
-from algorithms.forward_checking import forward_checking_route
 from algorithms.BFS_MTPT import BFS_MTPT
+from algorithms.backtracking import knapsack_backtracking
+from algorithms.forward_checking import knapsack_forward_checking
 
 GRID_SIZE = 20
 PADDING = 15
@@ -31,63 +31,6 @@ ALG_MAP = {
 }
 
 ASSET_PATH = "Assets/"
-
-# ==================== LOGIC CSP (TỐI ƯU TẢI TRỌNG - KÈM HISTORY) ====================
-def knapsack_backtracking(items, max_weight):
-    best_val = 0
-    best_subset = []
-    history = [] 
-    
-    def backtrack(index, curr_w, curr_v, curr_sub):
-        nonlocal best_val, best_subset
-        
-        history.append((curr_sub.copy(), curr_w, curr_v, "THINKING"))
-        
-        if curr_w > max_weight:
-            history.append((curr_sub.copy(), curr_w, curr_v, "PRUNED_OVERWEIGHT"))
-            return
-            
-        if index == len(items):
-            if curr_v > best_val:
-                best_val = curr_v
-                best_subset = curr_sub.copy()
-                history.append((curr_sub.copy(), curr_w, curr_v, "RECORD"))
-            return
-        
-        backtrack(index + 1, curr_w, curr_v, curr_sub)
-        
-        curr_sub.append(items[index])
-        backtrack(index + 1, curr_w + items[index]['w'], curr_v + items[index]['v'], curr_sub)
-        curr_sub.pop() 
-        
-    backtrack(0, 0, 0, [])
-    return best_subset, history
-
-def knapsack_forward_checking(items, max_weight):
-    best_val = 0
-    best_subset = []
-    history = []
-    
-    def fc_search(curr_w, curr_v, curr_sub, remaining_items):
-        nonlocal best_val, best_subset
-        
-        history.append((curr_sub.copy(), curr_w, curr_v, "THINKING"))
-        
-        if curr_v > best_val:
-            best_val = curr_v
-            best_subset = curr_sub.copy()
-            history.append((curr_sub.copy(), curr_w, curr_v, "RECORD"))
-            
-        valid_next_items = [item for item in remaining_items if curr_w + item['w'] <= max_weight]
-        
-        for i, item in enumerate(valid_next_items):
-            curr_sub.append(item)
-            next_remaining = valid_next_items[i + 1:] 
-            fc_search(curr_w + item['w'], curr_v + item['v'], curr_sub, next_remaining)
-            curr_sub.pop()
-            
-    fc_search(0, 0, [], items)
-    return best_subset, history
 
 # ==================== LOGIC CARO (TẠI KHO) ====================
 class CaroNode:
@@ -299,10 +242,8 @@ def ui_to_algo_grid(grid, targets):
             algo_grid[tx][ty] = 5
     return algo_grid
 
-
 def movement_cost(cell_value):
     return 5 if cell_value == 2 else 1
-
 
 def compute_path_to_target(start, target, grid, algo):
     targets = [target] if isinstance(target, tuple) else list(target)
@@ -326,35 +267,29 @@ def compute_path_to_target(start, target, grid, algo):
         current = next_pos
         cost += movement_cost(grid[current[0]][current[1]])
     return positions, cost, visited, runtime_ms
+
 def find_safe_orders(selected_orders, fuel, grid, start, algo):
-
     history = []
-
     for k in range(len(selected_orders), 0, -1):
-
         candidate = selected_orders[:k]
-
         houses = [o['pos'] for o in candidate]
-
         path, total_cost, visited, runtime_ms = compute_path_to_target(
             start,
             houses,
             grid,
             algo
         )
-
         safe = and_or_search(
             fuel,
             total_cost,
             len(houses)
         )
-
         history.append((k, safe))
-
         if safe:
             return candidate, total_cost, history
 
     return [], 0, history
+
 def main():
     pygame.init()
     
@@ -888,7 +823,7 @@ def main():
 
         visible_logs = delivery_log[log_scroll_offset : log_scroll_offset + max_visible_logs]
         for i, log_line in enumerate(visible_logs):
-            screen.blit(font.render(log_line[:45], True, (200, 200, 200)), (panel_x + 15, log_y + 35 + i*(font_size + 4)))
+            screen.blit(font.render(log_line[:55], True, (200, 200, 200)), (panel_x + 15, log_y + 35 + i*(font_size + 4)))
 
         # ================= VẼ LƯỚI BẢN ĐỒ BÊN PHẢI =================
         grid_x0 = LEFT_PANEL + PADDING + (GRID_WIDTH - GRID_SIZE * CELL_SIZE) // 2
@@ -965,16 +900,17 @@ def main():
         if delivery_state == "THINKING_PACK" and pack_think_step < len(pack_history):
             curr_sub, curr_w, curr_v, status = pack_history[pack_think_step]
             
-            panel_w, panel_h = 420, 180
+            panel_w, panel_h = 460, 180
             px = grid_x0 + (GRID_WIDTH - panel_w) // 2
             py = grid_y0 + (GRID_HEIGHT - panel_h) // 2
             
             pygame.draw.rect(screen, (40, 40, 40), (px, py, panel_w, panel_h), border_radius=10)
             pygame.draw.rect(screen, (200, 200, 200), (px, py, panel_w, panel_h), 2, border_radius=10)
             
-            screen.blit(bigfont.render("ĐANG BỐC HÀNG VÀO DRONE", True, (255, 255, 100)), (px + 20, py + 15))
+            title_txt = bigfont.render("ĐANG BỐC HÀNG VÀO DRONE", True, (255, 255, 100))
+            screen.blit(title_txt, (px + (panel_w - title_txt.get_width()) // 2, py + 15))
             
-            bar_w = 380
+            bar_w = panel_w - 40
             bar_h = 30
             pygame.draw.rect(screen, (80, 80, 80), (px + 20, py + 60, bar_w, bar_h))
             

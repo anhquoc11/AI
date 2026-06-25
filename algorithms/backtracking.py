@@ -1,29 +1,29 @@
-def heuristic_distance(pos1, pos2):
-    return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
-
-def backtracking_route(start_pos, houses):
-    best_route = None
-    min_cost = float('inf')
-    history = []
-
-    def backtrack(current_pos, unvisited, current_route, current_cost):
-        nonlocal best_route, min_cost
-        history.append((current_route, "THINKING"))
-        if current_cost >= min_cost:
-            history.append((current_route, "PRUNED"))
+def knapsack_backtracking(items, max_weight):
+    best_val = 0
+    best_subset = []
+    history = [] 
+    
+    def backtrack(index, curr_w, curr_v, curr_sub):
+        nonlocal best_val, best_subset
+        
+        history.append((curr_sub.copy(), curr_w, curr_v, "THINKING"))
+        
+        if curr_w > max_weight:
+            history.append((curr_sub.copy(), curr_w, curr_v, "PRUNED_OVERWEIGHT"))
             return
             
-        if not unvisited:
-            best_route = current_route
-            min_cost = current_cost
-            history.append((current_route, "RECORD"))
+        if index == len(items):
+            if curr_v > best_val:
+                best_val = curr_v
+                best_subset = curr_sub.copy()
+                history.append((curr_sub.copy(), curr_w, curr_v, "RECORD"))
             return
-            
-        for next_house in unvisited:
-            step_cost = heuristic_distance(current_pos, next_house)
-            new_unvisited = [h for h in unvisited if h != next_house]
-            new_route = current_route + [next_house]
-            backtrack(next_house, new_unvisited, new_route, current_cost + step_cost)
-
-    backtrack(start_pos, houses, [], 0)
-    return best_route, min_cost, history
+        
+        backtrack(index + 1, curr_w, curr_v, curr_sub)
+        
+        curr_sub.append(items[index])
+        backtrack(index + 1, curr_w + items[index]['w'], curr_v + items[index]['v'], curr_sub)
+        curr_sub.pop() 
+        
+    backtrack(0, 0, 0, [])
+    return best_subset, history
