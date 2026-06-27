@@ -1,0 +1,20 @@
+GRID_SIZE = 20
+PADDING = 15
+FPS = 60
+
+ASSET_PATH = "Assets/"
+
+C4_ROWS = 5
+C4_COLS = 6
+
+EMPTY = 0
+PLAYER_C4 = 1
+AI_C4 = 2
+
+MAX_WEIGHT = 15
+
+DIFFICULTY_LEVELS = [
+    "DỄ",
+    "TRUNG BÌNH",
+    "KHÓ"
+]

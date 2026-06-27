@@ -36,7 +36,6 @@ def BFS_MTPT(initial_states):
             visited_positions.add((i_child, j_child))
             if Utility.count_box_cells(state_child) == 0:
                 end = Node(i_child, j_child, state_child, action, parent)
-                queue.clear()
                 break
             key = (i_child, j_child, tuple(tuple(row) for row in state_child))
             if key not in reached:
