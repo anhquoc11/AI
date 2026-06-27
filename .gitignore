@@ -1,2 +1,6 @@
 .DS_Store
 /algorithms/__pycache__
+/config/__pycache__
+/core/__pycache__
+/games/__pycache__
+/ui/__pycache__

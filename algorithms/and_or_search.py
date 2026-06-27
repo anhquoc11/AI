@@ -57,20 +57,6 @@ def and_node(fuel, houses_left):
 
 
 def and_or_search(current_fuel, route_cost, house_count):
-    """
-    current_fuel : nhiên liệu hiện có
-
-    route_cost : chi phí đường bay dự kiến
-                 từ thuật toán tìm đường
-
-    house_count : số nhà cần giao
-
-    True  -> an toàn trong mọi trường hợp
-
-    False -> tồn tại ít nhất 1 nhánh
-             khiến drone hết nhiên liệu
-    """
-
     memo.clear()
 
     fuel_after_route = current_fuel - route_cost

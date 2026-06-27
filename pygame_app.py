@@ -11,8 +11,8 @@ from algorithms.A_sao import A_sao
 from algorithms.Simple_Hill_Climbing import Simple_Hill_Climbing
 from algorithms.Local_Beam_Search import Local_Beam_Search
 from algorithms.and_or_search import and_or_search
-from algorithms.backtracking import backtracking_route
-from algorithms.forward_checking import forward_checking_route
+from algorithms.backtracking import knapsack_backtracking
+from algorithms.forward_checking import knapsack_forward_checking
 from algorithms.BFS_MTPT import BFS_MTPT
 from config.settings import *
 from config.assets import load_assets
