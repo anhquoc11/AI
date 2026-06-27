@@ -62,8 +62,8 @@ NHET GIF VO DAY
 
 **4. Search in Complex Environments**
 
--  [TBD]()
--  [TBD]()
+-  [BFS](./algorithms/BFS_MTPT.py)
+-  [And Or Search](./algorithms/and_or_search.py)
 
 **5. Constraint Satisfaction Problem (CSP)**
 
