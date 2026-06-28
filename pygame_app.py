@@ -1,19 +1,6 @@
 import pygame
 import sys
 import random
-import re
-import copy
-from algorithms import Utility
-from algorithms.BFS import BFS
-from algorithms.DFS import DFS
-from algorithms.greedy import greedy
-from algorithms.A_sao import A_sao
-from algorithms.Simple_Hill_Climbing import Simple_Hill_Climbing
-from algorithms.Local_Beam_Search import Local_Beam_Search
-from algorithms.and_or_search import and_or_search
-from algorithms.backtracking import knapsack_backtracking
-from algorithms.forward_checking import knapsack_forward_checking
-from algorithms.BFS_MTPT import BFS_MTPT
 from config.settings import *
 from config.assets import load_assets
 from core.map_generator import random_map
@@ -29,32 +16,9 @@ from ui.caro_ui import *
 from ui.connect4_ui import *
 from algorithms.backtracking import knapsack_backtracking
 from algorithms.forward_checking import knapsack_forward_checking
-ALG_MAP = {
-    'BFS': BFS,
-    'DFS': DFS,
-    'Greedy': greedy,
-    'A*': A_sao,
-    'Hill Simple': Simple_Hill_Climbing,
-    'Local Beam': Local_Beam_Search,
-    'BFS MTPT': lambda grid, i, j: BFS_MTPT([(grid, i, j)]) 
-}
-
-def choose_algorithm(name):
-    n = name.strip().lower()
-    mapping = {
-        "bfs": "BFS", "dfs": "DFS", "greedy": "Greedy",
-        "astar": "A*", "a*": "A*", "hill simple": "Hill Simple",
-        "local beam": "Local Beam",
-    }
-    key = mapping.get(n, None)
-    if key is None:
-        for k in ALG_MAP.keys():
-            if k.lower() == name.lower():
-                key = k
-                break
-    if key is None: raise ValueError(f"Unknown algorithm: {name}")
-    return ALG_MAP[key]
-
+from core.algorithm_registry import choose_algorithm, ALG_MAP
+from core.map_manager import create_map
+from core.game_logic import * 
 
 def main():
     pygame.init()
@@ -81,31 +45,7 @@ def main():
     except:
         font = pygame.font.SysFont(None, font_size)
         bigfont = pygame.font.SysFont(None, big_font_size)
-        
-    grid = random_map(GRID_SIZE, obstacle_prob=0.12)
-    start = None
-    goal = None
-    warehouse_orders = []
-    houses = []
-    
-    for i in range(GRID_SIZE):
-        for j in range(GRID_SIZE):
-            if grid[i][j] == 3: start = (i, j)
-            elif grid[i][j] == 4: goal = (i, j)
-            elif grid[i][j] == 5: 
-                grid[i][j] = 0 
-                warehouse_orders.append({
-                    'w': random.randint(3, 7), 
-                    'v': random.randint(10, 50),
-                    'pos': (i, j)
-                })
-            
-    if start is None:
-        start = (0, 0)
-        grid[start[0]][start[1]] = 3
-    if goal is None:
-        goal = (GRID_SIZE-1, GRID_SIZE-1)
-        grid[goal[0]][goal[1]] = 4
+    grid, start, goal, warehouse_orders = create_map(GRID_SIZE)
     base = start
     
     selected_algo_name = 'A*'
@@ -187,7 +127,6 @@ def main():
         c4_start_x = screen_width // 2 - c4_board_width // 2
         c4_start_y = screen_height // 2 - c4_board_height // 2
         c4_cell_s = c4_board_width // C4_COLS
-        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -330,18 +269,7 @@ def main():
 
         # ================= AI CARO & QUYẾT ĐỊNH TẢI TRỌNG =================
         if in_minigame_caro and not caro_player_turn and (now - ai_timer > 300):
-            opt_prob = 1.0 
-            if DIFFICULTY_LEVELS[current_difficulty_idx] == "DỄ": opt_prob = 0.20 
-            elif DIFFICULTY_LEVELS[current_difficulty_idx] == "TRUNG BÌNH": opt_prob = 0.70 
-            
-            if random.random() < opt_prob:
-                score, best_move = alpha_beta_caro(CaroNode(caro_board, None, None), 9, float('-inf'), float('inf'), True)
-            else:
-                available_moves = get_actions_caro(caro_board)
-                best_move = random.choice(available_moves) if available_moves else None
-
-            if best_move: caro_board[best_move[0]][best_move[1]] = 2
-            caro_player_turn = True
+            caro_player_turn, fuel =  update_caro(caro_board,current_difficulty_idx,DIFFICULTY_LEVELS,fuel)
 
         if in_minigame_caro and is_terminal_caro(caro_board):
             pygame.time.delay(1000)
@@ -462,6 +390,7 @@ def main():
                 delivery_log.append("Giao hàng & Xếp Thắng! +30 Nhiên liệu")
             elif winning_move_c4(connect4_board, AI_C4):
                 fuel -= 10
+                delivery_log.append("Giao hàng & Xếp Thua! -10 Nhiên liệu")
                 if fuel < 0:
                     fuel = 0
             c4_player_turn = True
