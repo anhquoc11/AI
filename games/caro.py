@@ -9,10 +9,6 @@ class CaroNode:
 def get_actions_caro(state):
     return [(i, j) for i in range(3) for j in range(3) if state[i][j] == 0]
 
-
-def get_actions_caro(state):
-    return [(i, j) for i in range(3) for j in range(3) if state[i][j] == 0]
-
 def check_winner_caro(state):
     for i in range(3):
         if state[i][0] == state[i][1] == state[i][2] and state[i][0] != 0: return state[i][0]
