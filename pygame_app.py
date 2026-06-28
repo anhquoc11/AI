@@ -27,6 +27,8 @@ from ui.dropdown import *
 from ui.knapsack_ui import *
 from ui.caro_ui import *
 from ui.connect4_ui import *
+from algorithms.backtracking import knapsack_backtracking
+from algorithms.forward_checking import knapsack_forward_checking
 ALG_MAP = {
     'BFS': BFS,
     'DFS': DFS,
@@ -36,69 +38,6 @@ ALG_MAP = {
     'Local Beam': Local_Beam_Search,
     'BFS MTPT': lambda grid, i, j: BFS_MTPT([(grid, i, j)]) 
 }
-
-
-# ==================== LOGIC CSP (TỐI ƯU TẢI TRỌNG - KÈM HISTORY) ====================
-def knapsack_backtracking(items, max_weight):
-    best_val = 0
-    best_subset = []
-    history = [] 
-    
-    def backtrack(index, curr_w, curr_v, curr_sub):
-        nonlocal best_val, best_subset
-        
-        history.append((curr_sub.copy(), curr_w, curr_v, "THINKING"))
-        
-        if curr_w > max_weight:
-            history.append((curr_sub.copy(), curr_w, curr_v, "PRUNED_OVERWEIGHT"))
-            return
-            
-        if index == len(items):
-            if curr_v > best_val:
-                best_val = curr_v
-                best_subset = curr_sub.copy()
-                history.append((curr_sub.copy(), curr_w, curr_v, "RECORD"))
-            return
-        
-        backtrack(index + 1, curr_w, curr_v, curr_sub)
-        
-        curr_sub.append(items[index])
-        backtrack(index + 1, curr_w + items[index]['w'], curr_v + items[index]['v'], curr_sub)
-        curr_sub.pop() 
-        
-    backtrack(0, 0, 0, [])
-    return best_subset, history
-
-def knapsack_forward_checking(items, max_weight):
-    best_val = 0
-    best_subset = []
-    history = []
-    
-    def fc_search(curr_w, curr_v, curr_sub, remaining_items):
-        nonlocal best_val, best_subset
-        
-        history.append((curr_sub.copy(), curr_w, curr_v, "THINKING"))
-        
-        if curr_v > best_val:
-            best_val = curr_v
-            best_subset = curr_sub.copy()
-            history.append((curr_sub.copy(), curr_w, curr_v, "RECORD"))
-            
-        valid_next_items = [item for item in remaining_items if curr_w + item['w'] <= max_weight]
-        
-        for i, item in enumerate(valid_next_items):
-            curr_sub.append(item)
-            next_remaining = valid_next_items[i + 1:] 
-            fc_search(curr_w + item['w'], curr_v + item['v'], curr_sub, next_remaining)
-            curr_sub.pop()
-            
-    fc_search(0, 0, [], items)
-    return best_subset, history
-
-
-
-# ==================== MAIN GAME ====================
-
 
 def choose_algorithm(name):
     n = name.strip().lower()
