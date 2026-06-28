@@ -347,10 +347,10 @@ def main():
                             algo
                             )
                         safe_orders, safe_cost, ao_history = find_safe_orders(selected_orders,fuel,grid,start,algo)
-                        for num_orders, is_safe in ao_history:
-                            if is_safe:
-                                delivery_log.append(f"[AO] {num_orders} đơn -> AN TOÀN")
-                            else:delivery_log.append(f"[AO] {num_orders} đơn -> KHÔNG AN TOÀN")
+                        for item in ao_history:
+                            orders = ", ".join(str(order["pos"]) for order in item["orders"])
+                            if item["safe"]: delivery_log.append(f"[AO] ({orders}) -> AN TOÀN")
+                            else: delivery_log.append(f"[AO] ({orders}) -> KHÔNG AN TOÀN")
                         if safe_orders:
                             houses = [o['pos'] for o in safe_orders]
                             current_target = houses
