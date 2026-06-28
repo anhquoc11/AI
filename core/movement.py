@@ -5,6 +5,7 @@ from algorithms.and_or_search import and_or_search
 def movement_cost(cell_value):
     return 5 if cell_value == 2 else 1
 
+# chuẩn hóa ma trận phù hợp với target
 def ui_to_algo_grid(grid, targets):
     rows = len(grid)
     cols = len(grid[0]) if rows else 0
@@ -22,7 +23,7 @@ def ui_to_algo_grid(grid, targets):
             algo_grid[tx][ty] = 5
     return algo_grid
 
-
+# gọi thuật toán theo lựa chọn
 def compute_path_to_target(start, target, grid, algo):
     targets = [target] if isinstance(target, tuple) else list(target)
     search_grid = ui_to_algo_grid(grid, targets)
@@ -46,33 +47,15 @@ def compute_path_to_target(start, target, grid, algo):
         cost += movement_cost(grid[current[0]][current[1]])
     return positions, cost, visited, runtime_ms
 
-
+# xem xét việc lựa chọn đơn hàng sao cho không hết nhiên liệu giữa đường
 def find_safe_orders(selected_orders, fuel, grid, start, algo):
-
     history = []
-
     for k in range(len(selected_orders), 0, -1):
-
         candidate = selected_orders[:k]
-
         houses = [o['pos'] for o in candidate]
-
-        path, total_cost, visited, runtime_ms = compute_path_to_target(
-            start,
-            houses,
-            grid,
-            algo
-        )
-
-        safe = and_or_search(
-            fuel,
-            total_cost,
-            len(houses)
-        )
-
+        path, total_cost, visited, runtime_ms = compute_path_to_target(start,houses,grid,algo)
+        safe = and_or_search(fuel,total_cost,len(houses))
         history.append((k, safe))
-
         if safe:
             return candidate, total_cost, history
-
     return [], 0, history
