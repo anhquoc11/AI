@@ -12,6 +12,7 @@ from ui.dropdown import *
 from ui.knapsack_ui import *
 from ui.caro_ui import *
 from ui.connect4_ui import *
+from algorithms.minimax import *
 from algorithms.backtracking import knapsack_backtracking
 from algorithms.forward_checking import knapsack_forward_checking
 from core.algorithm_registry import choose_algorithm, ALG_MAP
