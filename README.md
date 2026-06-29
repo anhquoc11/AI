@@ -41,7 +41,7 @@
 
 ## Demo
 
-NHET GIF VO DAY 
+![DEMO](./images/demo.gif)
 
 ## Algorithms
 
@@ -91,8 +91,8 @@ NHET GIF VO DAY
 ## Project Structure
 
 ```
-Shipper-Delivery-Game
-├── Assets                           # Contains all game graphics and fonts
+AI
+├── Assets                        # Contains all game graphics and fonts
 │   ├── Building.jpg
 │   ├── Drone.jpg
 │   ├── Nofly.jpg
@@ -100,23 +100,52 @@ Shipper-Delivery-Game
 │   ├── Warehouse.jpg
 │   ├── box.png
 │   ├── fonts
-│   │   └── font.ttf                 # Custom font file
+│   │   └── font.ttf              # Custom font file
 │   ├── house.jpg
 │   └── lock.png
+├── LICENCE
 ├── README.md
-├── algorithms                       # Contains all AI algorithm modules
+├── algorithms                    # Contains all AI algorithm modules
 │   ├── A_sao.py
 │   ├── BFS.py
+│   ├── BFS_MTPT.py
 │   ├── DFS.py
 │   ├── Local_Beam_Search.py
 │   ├── Simple_Hill_Climbing.py
 │   ├── Utility.py
 │   ├── alpha_beta.py
+│   ├── and_or_search.py
 │   ├── backtracking.py
 │   ├── forward_checking.py
 │   ├── greedy.py
 │   └── minimax.py
-└── pygame_app.py                    # The main execution script
+├── config                        # Contains system configuration settings.
+│   ├── assets.py
+│   └── settings.py
+├── core                          # Manages the primary game logic
+│   ├── algorithm_registry.py
+│   ├── game_logic.py
+│   ├── map_generator.py
+│   ├── map_manager.py
+│   └── movement.py
+├── games                         # Contains specific logic modules for the mini-games
+│   ├── caro.py
+│   └── connect4.py
+├── images                        
+│   ├── 1.png
+│   ├── 2.png
+│   ├── 3.png
+│   ├── 4.png
+│   └── demo.gif
+├── pygame_app.py                 # The main execution script
+└── ui                            # Handles the user interface
+    ├── caro_ui.py
+    ├── connect4_ui.py
+    ├── dropdown.py
+    ├── knapsack_ui.py
+    ├── map.py
+    ├── map_draw.py
+    └── panels.py
 ```
 
 ## Installation
