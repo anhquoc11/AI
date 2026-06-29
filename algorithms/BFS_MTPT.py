@@ -32,7 +32,7 @@ def BFS_MTPT(initial_states):
         for action in moves:
             i_child, j_child = Utility.next_pos(parent.i, parent.j, action)
             state_child = copy.deepcopy(parent.STATE)
-            state_child[i_child][j_child] = 0
+            if state_child[i_child][j_child] == 5: state_child[i_child][j_child] = 0
             visited_positions.add((i_child, j_child))
             if Utility.count_box_cells(state_child) == 0:
                 end = Node(i_child, j_child, state_child, action, parent)

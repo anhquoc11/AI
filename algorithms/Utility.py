@@ -68,7 +68,6 @@ def trace_path(end):
     return path_states, actions
 
 def is_terminal(state):
-    # Trò chơi kết thúc nếu không còn ô '5' (House) trên bản đồ
     return count_box_cells(state) == 0
 
 def get_actions_caro(state):

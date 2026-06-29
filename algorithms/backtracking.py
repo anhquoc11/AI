@@ -1,29 +1,29 @@
 def knapsack_backtracking(items, max_weight):
-    best_val = 0
-    best_subset = []
+    best_value = 0
+    best_orders = []
     history = [] 
     
-    def backtrack(index, curr_w, curr_v, curr_sub):
-        nonlocal best_val, best_subset
+    def backtrack(index, current_weight, current_value, selected_orders):
+        nonlocal best_value, best_orders
         
-        history.append((curr_sub.copy(), curr_w, curr_v, "THINKING"))
+        history.append((selected_orders.copy(), current_weight, current_value, "THINKING"))
         
-        if curr_w > max_weight:
-            history.append((curr_sub.copy(), curr_w, curr_v, "PRUNED_OVERWEIGHT"))
+        if current_weight > max_weight:
+            history.append((selected_orders.copy(), current_weight, current_value, "PRUNED_OVERWEIGHT"))
             return
             
         if index == len(items):
-            if curr_v > best_val:
-                best_val = curr_v
-                best_subset = curr_sub.copy()
-                history.append((curr_sub.copy(), curr_w, curr_v, "RECORD"))
+            if current_value > best_value:
+                best_value = current_value
+                best_orders = selected_orders.copy()
+                history.append((selected_orders.copy(), current_weight, current_value, "RECORD"))
             return
         
-        backtrack(index + 1, curr_w, curr_v, curr_sub)
+        backtrack(index + 1, current_weight, current_value, selected_orders)
         
-        curr_sub.append(items[index])
-        backtrack(index + 1, curr_w + items[index]['w'], curr_v + items[index]['v'], curr_sub)
-        curr_sub.pop() 
+        selected_orders.append(items[index])
+        backtrack(index + 1, current_weight + items[index]['w'], current_value + items[index]['v'], selected_orders)
+        selected_orders.pop() 
         
     backtrack(0, 0, 0, [])
-    return best_subset, history
+    return best_orders, history

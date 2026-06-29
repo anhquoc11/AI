@@ -38,7 +38,7 @@ def A_sao(grid, start_i, start_j):
             i_child, j_child = Utility.next_pos(parent.i, parent.j, action)
             energy = 5 if state_child[i_child][j_child] == 2 else 1
             g_child = parent.G + energy
-            state_child[i_child][j_child] = 0
+            if state_child[i_child][j_child] == 5: state_child[i_child][j_child] = 0
             visited_positions.add((i_child, j_child))
             h_child = Utility.count_box_cells(state_child) * 100 + Utility.distance_to_nearest_house(i_child, j_child, state_child)
             child = Node(i_child, j_child, state_child, action, parent, g_child, h_child + g_child)

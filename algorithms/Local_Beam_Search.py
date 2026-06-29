@@ -32,7 +32,7 @@ def Local_Beam_Search(grid, start_i, start_j):
             for action in move_list:
                 state_child = copy.deepcopy(parent.STATE)
                 i_child, j_child = Utility.next_pos(parent.i, parent.j, action)
-                state_child[i_child][j_child] = 0
+                if state_child[i_child][j_child] == 5: state_child[i_child][j_child] = 0
                 visited_positions.add((i_child, j_child))
                 h_child = Utility.count_box_cells(state_child) * 100 + Utility.distance_to_nearest_house(i_child, j_child, state_child)
                 child = Node(i_child, j_child, state_child, action, parent, h_child)
