@@ -5,8 +5,6 @@ from config.settings import *
 from config.assets import load_assets
 from core.map_generator import random_map
 from core.movement import *
-from games.caro import *
-from games.connect4 import *
 from ui.map import *
 from ui.panels import *
 from ui.map_draw import *

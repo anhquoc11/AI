@@ -1,7 +1,7 @@
 
 import random
-from games.caro import *
-from games.connect4 import *
+from algorithms.alpha_beta import *
+from algorithms.minimax import *
 
 def update_caro(caro_board,current_difficulty_idx,DIFFICULTY_LEVELS,fuel):
     opt_prob = 1.0 
