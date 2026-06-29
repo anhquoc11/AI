@@ -127,10 +127,8 @@ AI
 │   ├── game_logic.py
 │   ├── map_generator.py
 │   ├── map_manager.py
-│   └── movement.py
-├── games                         # Contains specific logic modules for the mini-games
-│   ├── caro.py
-│   └── connect4.py
+│   └── movement.py                
+│ 
 ├── images                        
 │   ├── 1.png
 │   ├── 2.png
