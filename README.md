@@ -128,7 +128,6 @@ AI
 │   ├── map_generator.py
 │   ├── map_manager.py
 │   └── movement.py                
-│ 
 ├── images                        
 │   ├── 1.png
 │   ├── 2.png
